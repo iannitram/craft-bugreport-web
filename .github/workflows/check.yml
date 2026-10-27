@@ -9,7 +9,9 @@ permissions:
 
 jobs:
   check:
-    # Lint and tests on all three desktop platforms (R04); the build runs once, on Linux.
+    # Tests on all three desktop platforms (R04); lint and the build run once, on Linux (ESLint hung on the
+    # Windows runner without a lockfile, 2026-10-26; lint does not depend on the OS).
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -30,6 +32,7 @@ jobs:
         run: npm install
 
       - name: Lint
+        if: matrix.os == 'ubuntu-latest'
         run: npm run lint
 
       - name: Unit tests
