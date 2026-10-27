@@ -1,0 +1,6 @@
+export { installErrorBuffer } from './core/errorBuffer.js'
+export { buildReport, MAX_SCREENSHOT_BYTES } from './core/report.js'
+export { sendReport } from './core/upload.js'
+export { default as ReportButton } from './components/ReportButton.vue'
+export { default as ReportForm } from './components/ReportForm.vue'
+export { default as ConsentScreen } from './components/ConsentScreen.vue'
