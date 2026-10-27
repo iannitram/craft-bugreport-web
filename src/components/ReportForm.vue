@@ -12,6 +12,7 @@ export default {
 		config: { type: Object, required: true },
 		getWorkingFile: { type: Function, default: null },
 	},
+
 	data() {
 		return { label: 'Report form (not built yet)' }
 	},

@@ -12,6 +12,7 @@ export default {
 		report: { type: Object, required: true },
 		config: { type: Object, required: true },
 	},
+
 	data() {
 		return { label: 'Consent screen (not built yet)' }
 	},

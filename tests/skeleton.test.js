@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import * as api from '../src/index.js'
 import { formatLine } from '../src/core/errorBuffer.js'
-import { maskText } from '../src/core/mask.js'
-import { buildManifest } from '../src/core/manifest.js'
 import { dropFileName } from '../src/core/filename.js'
+import { buildManifest } from '../src/core/manifest.js'
+import { maskText } from '../src/core/mask.js'
 import { buildZip, fingerprint } from '../src/core/zip.js'
+import * as api from '../src/index.js'
 
 // Skeleton smoke test: the public surface exists. Each module's issue replaces its part with real tests.
 describe('skeleton', () => {
