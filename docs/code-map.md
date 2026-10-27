@@ -17,6 +17,7 @@ Status: every module below is a **stub** (2026-10-26). Move a row to **present**
 | `src/components/ReportButton.vue` | The button; owns open/closed state; props `config`, `getWorkingFile` | stub | M1 |
 | `src/components/ReportForm.vue` | The form fields, screenshot picker, working-file box (always starts unticked); emits `make-report` | stub | M1, M4, M5 |
 | `src/components/ConsentScreen.vue` | File list with sizes and Show me, "Not sent yet", Send / Keep / Delete; refuses a changed fingerprint | stub | M8, M9 |
+| `src/standalone.js` | `mountReportButton(el, { config, getWorkingFile }) -> { unmount() }` for hosts without Vue (NeoCraft); built as `dist/craft-bugreport-web.standalone.js` with Vue bundled | stub (not yet created, #13) | M1 |
 | `tests/*.test.js` | One test file per module (Vitest, jsdom) | smoke tests only | all |
 
 ## How it fits together
