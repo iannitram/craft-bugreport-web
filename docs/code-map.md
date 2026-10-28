@@ -1,13 +1,16 @@
 # Code map
 
-Status: every module below is a **stub** (2026-10-26). Move a row to **present** in the PR that builds it.
+Describes commit: 7304979 (2026-10-28)
+
+Status: every module below is a **stub** (checked 2026-10-28: each function throws `NotBuilt`, each component renders a placeholder; nothing has been built since the skeleton). Move a row to **present** in the PR that builds it.
 
 ## Layout
 
 | Path | Owns | Status | Musts |
 |---|---|---|---|
-| `src/index.js` | Public exports: `installErrorBuffer`, `buildReport`, `sendReport`, `ReportButton` | present (re-exports) | - |
+| `src/index.js` | Public exports: `installErrorBuffer`, `buildReport`, `MAX_SCREENSHOT_BYTES`, `sendReport`, and the components `ReportButton`, `ReportForm`, `ConsentScreen` (`package.json` `exports` points here) | present (re-exports) | - |
 | `src/core/errorBuffer.js` | `installErrorBuffer({ size = 200 } = {}) -> { lines(): string[], uninstall(): void }`; `formatLine(level, args, date) -> string` | stub | M2 |
+| `src/core/notBuilt.js` | `NotBuilt`, the error every stub function throws; delete it with the last stub | present | - |
 | `src/core/mask.js` | `maskText(text, { userName }) -> string` | stub | M6 |
 | `src/core/manifest.js` | `buildManifest({ config, files, workingFileIncluded, screenshotIncluded, sentAsIs, now, userAgent }) -> object` | stub | M3 |
 | `src/core/filename.js` | `dropFileName(app, now, randomHex) -> string` (`<App>-web-<YYYYMMDDTHHMMSSZ>-<8 hex>.zip`) | stub | M9 |
@@ -18,7 +21,8 @@ Status: every module below is a **stub** (2026-10-26). Move a row to **present**
 | `src/components/ReportForm.vue` | The form fields, screenshot picker, working-file box (always starts unticked); emits `make-report` | stub | M1, M4, M5 |
 | `src/components/ConsentScreen.vue` | File list with sizes and Show me, "Not sent yet", Send / Keep / Delete; refuses a changed fingerprint | stub | M8, M9 |
 | `src/standalone.js` | `mountReportButton(el, { config, getWorkingFile }) -> { unmount() }` for hosts without Vue (NeoCraft); built as `dist/craft-bugreport-web.standalone.js` with Vue bundled | stub (not yet created, #13) | M1 |
-| `tests/*.test.js` | One test file per module (Vitest, jsdom) | smoke tests only | all |
+| `tests/skeleton.test.js` | Smoke test: the public surface and the core functions exist. Each module's issue adds its own `tests/<module>.test.js` (Vitest, jsdom) and trims this file | present (smoke only) | all |
+| `package.json`, `vite.config.mjs`, `vitest.config.mjs`, `eslint.config.mjs` | One runtime dependency, `fflate`; Vue 3 is a peer dependency. Vite library mode builds `src/index.js` to one ESM file `dist/craft-bugreport-web.js` with Vue external. No standalone build is configured yet (#13); no lockfile yet | present | - |
 
 ## How it fits together
 
@@ -48,4 +52,4 @@ flowchart LR
 
 ## Build and test
 
-`npm install`, `npm run lint`, `npm test`, `npm run build` (Vite library mode, ESM, Vue external). CI: `.github/workflows/check.yml`.
+`npm install`, `npm run lint`, `npm test`, `npm run build` (Vite library mode, ESM, Vue external). CI: `.github/workflows/check.yml` runs the tests on Linux, macOS and Windows (GitHub-hosted runners); lint and the build run on Linux only, because ESLint hung on the Windows runner. It uses `npm install` until a lockfile lands.
