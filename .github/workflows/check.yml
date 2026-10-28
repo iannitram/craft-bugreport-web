@@ -55,4 +55,4 @@ jobs:
 
       - name: Standalone bundle check
         if: matrix.os == 'ubuntu-latest'
-        run: npx vitest run tests/standalone.bundle.test.js
+        run: BUNDLE_CHECK=1 npx vitest run tests/standalone.bundle.test.js

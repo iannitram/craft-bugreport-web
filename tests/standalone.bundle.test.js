@@ -2,12 +2,11 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-// Reads the built standalone bundles (run `npm run build` first). Skips missing bundles
-// locally, but CI requires them to exist after the build step.
+// Reads the built standalone bundles. Runs only when BUNDLE_CHECK is set (CI's
+// "Standalone bundle check" step, after the build); then the bundles must exist.
 const root = resolve(import.meta.dirname, '..')
 const esmPath = resolve(root, 'dist/craft-bugreport-web.standalone.js')
 const iifePath = resolve(root, 'dist/craft-bugreport-web.standalone.iife.js')
-const built = existsSync(esmPath) && existsSync(iifePath)
 
 // Every module specifier the file names in an import, export-from or dynamic import.
 function specifiers(source) {
@@ -30,10 +29,10 @@ function isBare(specifier) {
 	return !/^(\.{0,2}\/|\/|https?:|data:|blob:)/.test(specifier)
 }
 
-describe.skipIf(!process.env.CI && !built)('standalone bundles', () => {
+describe.skipIf(!process.env.BUNDLE_CHECK)('standalone bundles', () => {
 	it('both standalone bundles exist', () => {
 		for (const file of [esmPath, iifePath]) {
-			expect(existsSync(file), `run npm run build first: dist/${file.split('/').pop()} is missing`).toBe(true)
+			expect(existsSync(file), `dist/${file.split('/').pop()} is missing: run npm run build before the bundle check`).toBe(true)
 		}
 	})
 
