@@ -1,4 +1,4 @@
-export { installErrorBuffer } from './core/errorBuffer.js'
+export { currentErrorLines, installErrorBuffer } from './core/errorBuffer.js'
 export { buildReport, MAX_SCREENSHOT_BYTES } from './core/report.js'
 export { sendReport } from './core/upload.js'
 export { default as ReportButton } from './components/ReportButton.vue'

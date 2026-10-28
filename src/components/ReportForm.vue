@@ -97,6 +97,7 @@
 </template>
 
 <script>
+import { currentErrorLines } from '../core/errorBuffer.js'
 import { buildReport, MAX_SCREENSHOT_BYTES } from '../core/report.js'
 
 let formCount = 0
@@ -226,6 +227,7 @@ export default {
 					screenshot: this.screenshot,
 					includeWorkingFile: this.includeWorkingFile,
 					getWorkingFile: this.getWorkingFile,
+					errorLines: currentErrorLines(),
 				})
 				if (this.alive) {
 					this.$emit('makeReport', report)

@@ -7,7 +7,7 @@ import { createApp } from 'vue'
 import ReportButton from './components/ReportButton.vue'
 import { relayProblem } from './core/relay.js'
 
-export { installErrorBuffer } from './core/errorBuffer.js'
+export { currentErrorLines, installErrorBuffer } from './core/errorBuffer.js'
 
 /**
  * Mount the "Report a bug" button, form and consent screen into an element.
