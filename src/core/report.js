@@ -15,24 +15,28 @@ const NO_ERRORS_TEXT = 'No errors or warnings were recorded.'
 
 const encoder = new TextEncoder()
 
+// Names that hold secrets. Checked inside the replacer, so the key=value pattern stays linear (#32 review).
+const SECRET_KEY = /token|secret|password|passwd|apikey|api_key|auth|key/i
+
 /**
  * Mask one error buffer line before it enters app.log: the shared maskText rules
  * (user name, home paths), then URLs, tokens, e-mail addresses, paths and document file names.
- * Buffer lines can carry user text the form never shows.
+ * Buffer lines can carry user text the form never shows. Every pattern starts only at the
+ * beginning of a run (a lookbehind, not \b), so no input makes it backtrack (linear time).
  *
  * @param {string} line one buffer line
  * @param {string} [userName] the signed-in user's name
  * @return {string}
  */
-function maskLogLine(line, userName) {
+export function maskLogLine(line, userName) {
 	return maskText(line, { userName })
-		.replace(/\b[a-z][a-z0-9+.-]*:\/\/\S*/gi, '<url>')
+		.replace(/(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*:\/\/\S*/gi, '<url>')
 		.replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi, '$1 <token>')
-		.replace(/\b([\w.-]*(?:token|secret|password|passwd|apikey|api_key|auth|key)[\w.-]*)(["']?\s*[=:]\s*["']?)[^\s,;&"']+/gi, '$1$2<token>')
+		.replace(/(?<![\w.-])([\w.-]+)(["']?\s*[=:]\s*["']?)([^\s,;&"']+)/g, (match, name, sep) => (SECRET_KEY.test(name) ? `${name}${sep}<token>` : match))
 		.replace(/(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '<email>')
-		.replace(/(?<![~\w])(?:[A-Za-z]:)?[\\/]\S*/g, '<path>')
-		.replace(/(?<![~\w/\\])[^\s"'/\\]+\.(?:opml|odt|json|txt|png|jpe?g|webp|csv|xml|html?|md)\b/gi, '<file>')
-		.replace(/\b(?=[A-Za-z0-9+/_=-]*\d)(?=[A-Za-z0-9+/_=-]*[A-Za-z])[A-Za-z0-9+/_=-]{24,}/g, '<token>')
+		.replace(/(?<![~\w])(?:[A-Za-z]:)?[/\x5c]\S*/g, '<path>')
+		.replace(/(?<![^\s"'=:(,])[^\s"'/\x5c=:(,~][^\s"'/\x5c=:(,]*\.(?:opml|odt|json|txt|png|jpe?g|webp|csv|xml|html?|md)\b/gi, '<file>')
+		.replace(/(?<![A-Za-z0-9+/_=-])(?=[A-Za-z0-9+/_=-]*\d)(?=[A-Za-z0-9+/_=-]*[A-Za-z])[A-Za-z0-9+/_=-]{24,}/g, '<token>')
 }
 
 /**
