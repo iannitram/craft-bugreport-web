@@ -52,3 +52,7 @@ jobs:
       - name: Build
         if: matrix.os == 'ubuntu-latest'
         run: npm run build
+
+      - name: Standalone bundle check
+        if: matrix.os == 'ubuntu-latest'
+        run: BUNDLE_CHECK=1 npx vitest run tests/standalone.bundle.test.js

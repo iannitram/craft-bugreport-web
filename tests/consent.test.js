@@ -215,4 +215,28 @@ describe('ConsentScreen', () => {
 		await flushPromises()
 		expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:consent-test')
 	})
+
+	it('a failed send (500 on every try) shows the failure message, not "Sent", and Send is enabled again', async () => {
+		fetchMock.mockImplementation(async () => ({ status: 500 }))
+		const wrapper = mountButton()
+		await makeReportThrough(wrapper)
+
+		// sendReport waits 1s, then 2s, between its three tries; fake timers make those waits instant.
+		vi.useFakeTimers()
+		try {
+			await buttonByText(wrapper, 'Send').trigger('click')
+			// The digest is async (WebCrypto), so wait for the first try, then run the 1s and 2s waits.
+			await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+			await vi.advanceTimersByTimeAsync(1000)
+			await vi.advanceTimersByTimeAsync(2000)
+
+			await vi.waitFor(() => expect(consentDialog().textContent).toContain('Could not send the report (500). It is kept; try again later.'))
+			expect(fetchMock).toHaveBeenCalledTimes(3)
+			expect(consentStatus()).toBe('Not sent yet')
+			expect(consentDialog().textContent).not.toContain('Sent. Thank you.')
+			expect(buttonByText(wrapper, 'Send').element.disabled).toBe(false)
+		} finally {
+			vi.useRealTimers()
+		}
+	})
 })
