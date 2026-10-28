@@ -13,6 +13,15 @@ function escapeRegExp(value) {
 }
 
 /**
+ * Masks home-style paths and the signed-in user's name.
+ *
+ * Rules run in this order:
+ * 1. Windows home paths (`X:\Users\<name>` or `X:/Users/<name>`, any case) become `~`.
+ *    This runs first so a drive letter is removed with the path, not left behind.
+ * 2. `/home/<name>` becomes `~`.
+ * 3. `/Users/<name>` becomes `~`.
+ * 4. The user name becomes `<user>` as a case-insensitive whole word.
+ *
  * @param {string} text the text to mask
  * @param {{ userName?: string }} options the signed-in user's name
  * @return {string}
@@ -22,9 +31,9 @@ export function maskText(text, { userName } = {}) {
 		return ''
 	}
 	let masked = String(text)
+	masked = masked.replace(/[A-Za-z]:[\\/]Users[\\/][^\\/\s]+/gi, '~')
 	masked = masked.replace(/\/home\/[^/\s]*/g, '~')
 	masked = masked.replace(/\/Users\/[^/\s]+/g, '~')
-	masked = masked.replace(/[A-Za-z]:[\\/]Users[\\/][^\\/\s]+/gi, '~')
 	if (typeof userName === 'string' && userName.length > 0) {
 		const name = new RegExp(
 			`(?<!${WORD_CHAR})${escapeRegExp(userName)}(?!${WORD_CHAR})`,
