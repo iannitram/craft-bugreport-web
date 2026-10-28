@@ -82,6 +82,21 @@ describe('app.log from the installed error buffer', () => {
 		expect(appLog).toContain('<url>')
 	})
 
+	it('masks e-mail addresses and tokens in message and stack text', async () => {
+		buffer = installErrorBuffer()
+		console.error('login failed for CANARY_MAIL_31@example.org with Authorization: Bearer CANARY_BEARER_31')
+		console.warn('config', { api_key: 'CANARY_KEY_31', note: 'x' })
+		console.error(new Error('boom CANARY_LONG_31abcdefghijklmnopqrstuvwxyz0123456789'))
+		const { zip, appLog } = await makeReport()
+		for (const canary of ['CANARY_MAIL_31', 'CANARY_BEARER_31', 'CANARY_KEY_31', 'CANARY_LONG_31']) {
+			expect(appLog).not.toContain(canary)
+			expect(dec.decode(zip)).not.toContain(canary)
+		}
+		expect(appLog).toContain('<email>')
+		expect(appLog).toContain('<token>')
+		expect(appLog).toMatch(/ERROR Error: boom/)
+	})
+
 	it('keeps only the last 200 lines and at most 64 KB in app.log', async () => {
 		buffer = installErrorBuffer({ size: 500 })
 		for (let i = 0; i < 250; i++) {

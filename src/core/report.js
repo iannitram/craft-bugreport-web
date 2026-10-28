@@ -17,8 +17,8 @@ const encoder = new TextEncoder()
 
 /**
  * Mask one error buffer line before it enters app.log: the shared maskText rules
- * (user name, home paths), then anything left that looks like a URL, a path or a
- * document file name. Buffer lines can carry user text the form never shows.
+ * (user name, home paths), then URLs, tokens, e-mail addresses, paths and document file names.
+ * Buffer lines can carry user text the form never shows.
  *
  * @param {string} line one buffer line
  * @param {string} [userName] the signed-in user's name
@@ -27,8 +27,12 @@ const encoder = new TextEncoder()
 function maskLogLine(line, userName) {
 	return maskText(line, { userName })
 		.replace(/\b[a-z][a-z0-9+.-]*:\/\/\S*/gi, '<url>')
+		.replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi, '$1 <token>')
+		.replace(/\b([\w.-]*(?:token|secret|password|passwd|apikey|api_key|auth|key)[\w.-]*)(["']?\s*[=:]\s*["']?)[^\s,;&"']+/gi, '$1$2<token>')
+		.replace(/(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '<email>')
 		.replace(/(?<![~\w])(?:[A-Za-z]:)?[\\/]\S*/g, '<path>')
 		.replace(/(?<![~\w/\\])[^\s"'/\\]+\.(?:opml|odt|json|txt|png|jpe?g|webp|csv|xml|html?|md)\b/gi, '<file>')
+		.replace(/\b(?=[A-Za-z0-9+/_=-]*\d)(?=[A-Za-z0-9+/_=-]*[A-Za-z])[A-Za-z0-9+/_=-]{24,}/g, '<token>')
 }
 
 /**
