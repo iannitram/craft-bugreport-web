@@ -26,10 +26,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+          cache: npm
 
-      # No lockfile yet (it lands with the lockfile issue); switch to `npm ci` then.
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Lint
         if: matrix.os == 'ubuntu-latest'
