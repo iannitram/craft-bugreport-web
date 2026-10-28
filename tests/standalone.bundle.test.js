@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-// Reads the built standalone bundles (run `npm run build` first). Skips when they are not there,
-// so a plain `npm test` before a build still passes; CI runs it after the build step.
+// Reads the built standalone bundles (run `npm run build` first). Skips missing bundles
+// locally, but CI requires them to exist after the build step.
 const root = resolve(import.meta.dirname, '..')
 const esmPath = resolve(root, 'dist/craft-bugreport-web.standalone.js')
 const iifePath = resolve(root, 'dist/craft-bugreport-web.standalone.iife.js')
@@ -30,7 +30,13 @@ function isBare(specifier) {
 	return !/^(\.{0,2}\/|\/|https?:|data:|blob:)/.test(specifier)
 }
 
-describe.skipIf(!built)('standalone bundles', () => {
+describe.skipIf(!process.env.CI && !built)('standalone bundles', () => {
+	it('both standalone bundles exist', () => {
+		for (const file of [esmPath, iifePath]) {
+			expect(existsSync(file), `run npm run build first: dist/${file.split('/').pop()} is missing`).toBe(true)
+		}
+	})
+
 	it('the ESM bundle has no bare import (not even from vue)', () => {
 		const source = readFileSync(esmPath, 'utf8')
 
