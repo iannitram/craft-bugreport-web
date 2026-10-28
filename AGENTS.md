@@ -15,6 +15,6 @@ Everything you need to work here is in this repo. The full pipeline and rules li
 
 - **Nothing is sent without the user's Send press.** No automatic upload, ever; the consent screen lists every file first. This is the launcher's rule and the intake depends on it.
 - **The zip layout and manifest fields match the desktop launcher's** (docs/code-map.md, Report format). Changing either breaks the bug intake; it needs the owner's word.
-- **No File Drop address or token in this repo, in tests or in fixtures.** The host app passes `dropBase` and `dropToken`; tests use `https://drop.example.test` and a fake token.
+- **No File Drop address or token in this repo, in tests or in fixtures.** A browser host passes `relayUrl` (a URL on its own origin) and optional `headers`, never a drop address or token; `dropBase`/`dropToken` are for non-browser hosts only. Tests use `https://drop.example.test` and a fake token.
 - **Browser only.** No `node:` imports in `src/`; the module runs in the host app's page. Tests run in jsdom.
 - **Small and dependency-light.** Vue is a peer dependency; the only runtime dependency is the zip library (fflate).

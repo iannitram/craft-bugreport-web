@@ -1,44 +1,50 @@
 <template>
 	<div class="craft-bugreport-reportbutton">
-		<button
-			ref="button"
-			type="button"
-			class="craft-bugreport-reportbutton__open"
-			aria-haspopup="dialog"
-			:aria-expanded="open ? 'true' : 'false'"
-			@click="openForm">
-			{{ label }}
-		</button>
+		<p v-if="configError" role="alert" class="craft-bugreport-reportbutton__error">
+			{{ configError }}
+		</p>
+		<template v-else>
+			<button
+				ref="button"
+				type="button"
+				class="craft-bugreport-reportbutton__open"
+				aria-haspopup="dialog"
+				:aria-expanded="open ? 'true' : 'false'"
+				@click="openForm">
+				{{ label }}
+			</button>
 
-		<ReportForm
-			v-if="open"
-			:config="config"
-			:getWorkingFile="getWorkingFile"
-			@makeReport="onReportBuilt"
-			@close="closeForm" />
+			<ReportForm
+				v-if="open"
+				:config="config"
+				:getWorkingFile="getWorkingFile"
+				@makeReport="onReportBuilt"
+				@close="closeForm" />
 
-		<button
-			v-if="report && !consentOpen"
-			type="button"
-			class="craft-bugreport-reportbutton__review"
-			@click="openConsent">
-			Review the kept report
-		</button>
+			<button
+				v-if="report && !consentOpen"
+				type="button"
+				class="craft-bugreport-reportbutton__review"
+				@click="openConsent">
+				Review the kept report
+			</button>
 
-		<ConsentScreen
-			v-if="report && consentOpen"
-			:report="report"
-			:config="config"
-			:result="result"
-			@result="onResult"
-			@keep="closeConsent"
-			@delete="deleteReport" />
+			<ConsentScreen
+				v-if="report && consentOpen"
+				:report="report"
+				:config="config"
+				:result="result"
+				@result="onResult"
+				@keep="closeConsent"
+				@delete="deleteReport" />
+		</template>
 	</div>
 </template>
 
 <script>
 import ConsentScreen from './ConsentScreen.vue'
 import ReportForm from './ReportForm.vue'
+import { relayProblem } from '../core/relay.js'
 
 // The button owns the open/closed state, the report and its last send result, so a
 // kept report survives closing the consent screen. Focus returns to the button when a
@@ -59,6 +65,13 @@ export default {
 			report: null,
 			result: null,
 		}
+	},
+
+	computed: {
+		// A config that sets both relayUrl and a drop address is refused here: nothing is shown to send with.
+		configError() {
+			return relayProblem(this.config)
+		},
 	},
 
 	methods: {
@@ -109,6 +122,11 @@ export default {
 <style scoped>
 .craft-bugreport-reportbutton__review {
 	margin-left: 8px;
+}
+
+.craft-bugreport-reportbutton__error {
+	margin: 0;
+	color: var(--color-error, #c9302c);
 }
 
 .craft-bugreport-reportbutton__open,

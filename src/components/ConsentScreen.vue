@@ -79,6 +79,7 @@
 </template>
 
 <script>
+import { relayProblem } from '../core/relay.js'
 import { sendReport } from '../core/upload.js'
 
 const NOT_SET_UP = 'Bug reports are not set up for this app (no drop address).'
@@ -123,8 +124,13 @@ export default {
 			return { title: `craft-bugreport-consent-${this.uid}-title` }
 		},
 
-		hasDrop() {
-			return Boolean(this.config.dropBase && this.config.dropToken)
+		// A relay config (relayUrl) or a direct drop config (dropBase and dropToken), never both.
+		configProblem() {
+			return relayProblem(this.config)
+		},
+
+		hasTransport() {
+			return Boolean(this.config.relayUrl || (this.config.dropBase && this.config.dropToken))
 		},
 
 		sent() {
@@ -132,14 +138,17 @@ export default {
 		},
 
 		notice() {
-			if (!this.hasDrop) {
+			if (this.configProblem) {
+				return this.configProblem
+			}
+			if (!this.hasTransport) {
 				return NOT_SET_UP
 			}
 			return this.result?.message ?? ''
 		},
 
 		canSend() {
-			return this.hasDrop && !this.sending && !this.sent
+			return !this.configProblem && this.hasTransport && !this.sending && !this.sent
 		},
 	},
 
@@ -234,6 +243,8 @@ export default {
 			this.sending = true
 			try {
 				const result = await sendReport(this.report, {
+					relayUrl: this.config.relayUrl,
+					headers: this.config.headers,
 					dropBase: this.config.dropBase,
 					dropToken: this.config.dropToken,
 					app: this.config.app,
