@@ -17,7 +17,22 @@
 			@makeReport="onReportBuilt"
 			@close="closeForm" />
 
-		<ConsentScreen v-if="report" :report="report" :config="config" />
+		<button
+			v-if="report && !consentOpen"
+			type="button"
+			class="craft-bugreport-reportbutton__review"
+			@click="openConsent">
+			Review the kept report
+		</button>
+
+		<ConsentScreen
+			v-if="report && consentOpen"
+			:report="report"
+			:config="config"
+			:result="result"
+			@result="onResult"
+			@keep="closeConsent"
+			@delete="deleteReport" />
 	</div>
 </template>
 
@@ -25,7 +40,9 @@
 import ConsentScreen from './ConsentScreen.vue'
 import ReportForm from './ReportForm.vue'
 
-// The button owns the open/closed state. Closing the form returns focus to the button.
+// The button owns the open/closed state, the report and its last send result, so a
+// kept report survives closing the consent screen. Focus returns to the button when a
+// dialog closes.
 export default {
 	name: 'ReportButton',
 	components: { ConsentScreen, ReportForm },
@@ -38,7 +55,9 @@ export default {
 		return {
 			label: 'Report a bug',
 			open: false,
+			consentOpen: false,
 			report: null,
+			result: null,
 		}
 	},
 
@@ -49,21 +68,51 @@ export default {
 
 		closeForm() {
 			this.open = false
-			this.$nextTick(() => {
-				this.$refs.button?.focus()
-			})
+			this.returnFocus()
 		},
 
 		onReportBuilt(report) {
 			this.report = report
+			this.result = null
 			this.open = false
+			this.consentOpen = true
+		},
+
+		openConsent() {
+			this.consentOpen = true
+		},
+
+		closeConsent() {
+			this.consentOpen = false
+			this.returnFocus()
+		},
+
+		deleteReport() {
+			this.report = null
+			this.result = null
+			this.closeConsent()
+		},
+
+		onResult(result) {
+			this.result = result
+		},
+
+		returnFocus() {
+			this.$nextTick(() => {
+				this.$refs.button?.focus()
+			})
 		},
 	},
 }
 </script>
 
 <style scoped>
-.craft-bugreport-reportbutton__open {
+.craft-bugreport-reportbutton__review {
+	margin-left: 8px;
+}
+
+.craft-bugreport-reportbutton__open,
+.craft-bugreport-reportbutton__review {
 	padding: 6px 12px;
 	border: 1px solid var(--color-border-dark, #bbb);
 	border-radius: var(--border-radius, 8px);
