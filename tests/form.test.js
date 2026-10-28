@@ -192,7 +192,8 @@ describe('ReportButton and ReportForm', () => {
 			includeWorkingFile: true,
 			getWorkingFile,
 		}))
-		expect(dialog()).toBeNull()
+		// The form closes once the report is built (the consent screen, #10, is the next dialog).
+		expect(wrapper.findComponent(ReportForm).exists()).toBe(false)
 	})
 })
 
