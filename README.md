@@ -22,6 +22,8 @@ installErrorBuffer()          // as early as possible in main.js
 //               :get-working-file="() => ({ name: 'outline.opml', type: 'text/x-opml', data })" />
 ```
 
+app.log holds the page's recent errors and warnings recorded by `installErrorBuffer()`, so call it first, before the app starts.
+
 The host app depends on a pinned tag: `"craft-bugreport-web": "github:iannitram/craft-bugreport-web#v1.0.0"`.
 
 ### Sending from a page: relay mode

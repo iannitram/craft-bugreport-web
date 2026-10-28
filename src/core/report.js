@@ -9,7 +9,55 @@ export const MAX_SCREENSHOT_BYTES = 8 * 1024 * 1024
 const WORKING_FILE_EXTENSIONS = ['opml', 'odt', 'json', 'txt']
 const SCREENSHOT_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp']
 
+const APP_LOG_MAX_LINES = 200
+const APP_LOG_MAX_BYTES = 64 * 1024
+const NO_ERRORS_TEXT = 'No errors or warnings were recorded.'
+
 const encoder = new TextEncoder()
+
+// Names that hold secrets. Checked inside the replacer, so the key=value pattern stays linear (#32 review).
+const SECRET_KEY = /token|secret|password|passwd|apikey|api_key|auth|key/i
+
+/**
+ * Mask one error buffer line before it enters app.log: the shared maskText rules
+ * (user name, home paths), then URLs, tokens, e-mail addresses, paths and document file names.
+ * Buffer lines can carry user text the form never shows. Every pattern starts only at the
+ * beginning of a run (a lookbehind, not \b), so no input makes it backtrack (linear time).
+ *
+ * @param {string} line one buffer line
+ * @param {string} [userName] the signed-in user's name
+ * @return {string}
+ */
+export function maskLogLine(line, userName) {
+	return maskText(line, { userName })
+		.replace(/(?<![a-z0-9+.-])[a-z][a-z0-9+.-]*:\/\/\S*/gi, '<url>')
+		.replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]+/gi, '$1 <token>')
+		.replace(/(?<![\w.-])([\w.-]+)(["']?\s*[=:]\s*["']?)([^\s,;&"']+)/g, (match, name, sep) => (SECRET_KEY.test(name) ? `${name}${sep}<token>` : match))
+		.replace(/(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '<email>')
+		.replace(/(?<![~\w])(?:[A-Za-z]:)?[/\x5c]\S*/g, '<path>')
+		.replace(/(?<![^\s"'=:(,])[^\s"'/\x5c=:(,~][^\s"'/\x5c=:(,]*\.(?:opml|odt|json|txt|png|jpe?g|webp|csv|xml|html?|md)\b/gi, '<file>')
+		.replace(/(?<![A-Za-z0-9+/_=-])(?=[A-Za-z0-9+/_=-]*\d)(?=[A-Za-z0-9+/_=-]*[A-Za-z])[A-Za-z0-9+/_=-]{24,}/g, '<token>')
+}
+
+/**
+ * The app.log text: the last 200 buffer lines, masked, at most 64 KB; or a fixed
+ * line when there is nothing to report.
+ *
+ * @param {unknown[]} lines the buffer lines, oldest first
+ * @param {string} [userName] the signed-in user's name
+ * @return {string}
+ */
+function appLogText(lines, userName) {
+	let text = lines
+		.slice(-APP_LOG_MAX_LINES)
+		.map((line) => maskLogLine(String(line ?? ''), userName))
+		.join('\n')
+	while (encoder.encode(text).byteLength > APP_LOG_MAX_BYTES) {
+		const cut = text.indexOf('\n')
+		text = cut === -1 ? text.slice(Math.floor(text.length / 4)) : text.slice(cut + 1)
+	}
+	return text === '' ? NO_ERRORS_TEXT : text
+}
 
 /**
  * Turn the accepted data shapes into bytes.
@@ -113,9 +161,7 @@ export async function buildReport(input) {
 	const whatHappenedData = encoder.encode(whatHappenedText)
 
 	const lines = typeof errorLines === 'function' ? errorLines() : errorLines
-	const appLog = (Array.isArray(lines) ? lines : [])
-		.map((line) => maskText(line, { userName }))
-		.join('\n')
+	const appLog = appLogText(Array.isArray(lines) ? lines : [], userName)
 	const appLogData = encoder.encode(appLog)
 
 	let screenshotEntry = null

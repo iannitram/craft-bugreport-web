@@ -91,6 +91,15 @@ export function installErrorBuffer({ size = 200 } = {}) {
 }
 
 /**
+ * A copy of the installed buffer's lines, oldest first; [] when no buffer is installed.
+ *
+ * @return {string[]}
+ */
+export function currentErrorLines() {
+	return installed ? installed.lines() : []
+}
+
+/**
  * One buffer line: "<ISO time> <LEVEL> <message>".
  *
  * @param {'error'|'warn'} level the level
