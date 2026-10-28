@@ -1,3 +1,4 @@
+import { unzipSync } from 'fflate'
 import { describe, expect, it, vi } from 'vitest'
 import { buildReport, MAX_SCREENSHOT_BYTES } from '../src/core/report.js'
 import { fingerprint } from '../src/core/zip.js'
@@ -178,5 +179,60 @@ describe('buildReport', () => {
 		expect(dec.decode(dataOf(report, 'working-file.opml'))).toBe('<opml/>')
 		expect(report.manifest.working_file_included).toBe(true)
 		expect(report.manifest.sent_as_is).toEqual(['working-file.opml'])
+	})
+
+	it('never leaks a working-file extension that is not a known type', async () => {
+		const report = await buildReport(input({
+			includeWorkingFile: true,
+			getWorkingFile: vi.fn(() => ({
+				name: 'notes.alex',
+				type: 'application/octet-stream',
+				data: enc.encode('body'),
+			})),
+		}))
+
+		const fileNames = report.files.map((file) => file.name)
+		const zipNames = Object.keys(unzipSync(report.zip))
+		expect(fileNames).toContain('working-file.bin')
+		expect(zipNames).toContain('working-file.bin')
+		expect(report.manifest.files).toContain('working-file.bin')
+		expect(report.manifest.sent_as_is).toContain('working-file.bin')
+
+		for (const name of [...fileNames, ...zipNames, ...report.manifest.files, ...report.manifest.sent_as_is]) {
+			expect(name.toLowerCase()).not.toContain('alex')
+		}
+	})
+
+	it('never leaks a screenshot extension that is not a known type', async () => {
+		const report = await buildReport(input({
+			screenshot: { name: 'shot.alex', type: 'image/png', data: enc.encode('PNGDATA') },
+		}))
+
+		const fileNames = report.files.map((file) => file.name)
+		const zipNames = Object.keys(unzipSync(report.zip))
+		expect(fileNames).toContain('screenshot.png')
+		expect(zipNames).toContain('screenshot.png')
+		expect(report.manifest.files).toContain('screenshot.png')
+		expect(report.manifest.sent_as_is).toContain('screenshot.png')
+
+		for (const name of [...fileNames, ...zipNames, ...report.manifest.files, ...report.manifest.sent_as_is]) {
+			expect(name.toLowerCase()).not.toContain('alex')
+		}
+	})
+
+	it('still accepts known extensions, case-insensitively', async () => {
+		const report = await buildReport(input({
+			screenshot: { name: 'pic.jpeg', type: 'image/jpeg', data: enc.encode('JPGDATA') },
+			includeWorkingFile: true,
+			getWorkingFile: vi.fn(() => ({
+				name: 'outline.OPML',
+				type: 'text/x-opml',
+				data: enc.encode('<opml/>'),
+			})),
+		}))
+
+		const fileNames = report.files.map((file) => file.name)
+		expect(fileNames).toContain('working-file.opml')
+		expect(fileNames).toContain('screenshot.jpg')
 	})
 })

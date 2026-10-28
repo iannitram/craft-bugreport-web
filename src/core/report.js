@@ -6,6 +6,9 @@ import { buildZip, fingerprint } from './zip.js'
 
 export const MAX_SCREENSHOT_BYTES = 8 * 1024 * 1024
 
+const WORKING_FILE_EXTENSIONS = ['opml', 'odt', 'json', 'txt']
+const SCREENSHOT_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp']
+
 const encoder = new TextEncoder()
 
 /**
@@ -47,20 +50,22 @@ async function dataOf(file) {
 }
 
 /**
- * Pick the extension for a report entry from the file name, then the MIME type.
+ * Pick the extension for a report entry from the file name, then the MIME type,
+ * accepting only values on the entry's allowlist.
  *
  * @param {unknown} name the original file name
  * @param {unknown} type the MIME type
- * @param {string} fallback the extension when neither gives one
+ * @param {string} fallback the extension when neither gives an allowed one
+ * @param {string[]} allowed the extensions this entry may carry
  * @return {string}
  */
-function extensionFrom(name, type, fallback) {
+function extensionFrom(name, type, fallback, allowed) {
 	if (typeof name === 'string') {
 		const dot = name.lastIndexOf('.')
 		if (dot > 0 && dot < name.length - 1) {
 			const ext = name.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, '')
-			if (ext) {
-				return ext
+			if (ext && allowed.includes(ext)) {
+				return ext === 'jpeg' ? 'jpg' : ext
 			}
 		}
 	}
@@ -74,7 +79,7 @@ function extensionFrom(name, type, fallback) {
 				subtype = 'jpg'
 			}
 			subtype = subtype.replace(/[^a-z0-9]/g, '')
-			if (subtype) {
+			if (subtype && allowed.includes(subtype)) {
 				return subtype
 			}
 		}
@@ -122,7 +127,7 @@ export async function buildReport(input) {
 		if (data.byteLength > MAX_SCREENSHOT_BYTES) {
 			throw new RangeError('screenshot is larger than 8 MB')
 		}
-		const ext = extensionFrom(screenshot.name, screenshot.type, 'png')
+		const ext = extensionFrom(screenshot.name, screenshot.type, 'png', SCREENSHOT_EXTENSIONS)
 		screenshotEntry = { name: `screenshot.${ext}`, data }
 	}
 
@@ -131,7 +136,7 @@ export async function buildReport(input) {
 		const workingFile = await getWorkingFile()
 		if (workingFile !== null && workingFile !== undefined) {
 			const data = await dataOf(workingFile)
-			const ext = extensionFrom(workingFile.name, workingFile.type, 'bin')
+			const ext = extensionFrom(workingFile.name, workingFile.type, 'bin', WORKING_FILE_EXTENSIONS)
 			workingEntry = { name: `working-file.${ext}`, data }
 		}
 	}
