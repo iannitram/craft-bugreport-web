@@ -23,3 +23,47 @@ installErrorBuffer()          // as early as possible in main.js
 ```
 
 The host app depends on a pinned tag: `"craft-bugreport-web": "github:iannitram/craft-bugreport-web#v1.0.0"`.
+
+### Hosts without Vue
+
+For a page or an editor that does not use Vue (NeoCraft's browser editor and Electron renderer, a plain-PHP app), use the standalone build. Vue is inside it, so the page needs nothing else. `npm run build` writes three files to `dist/`; copy them next to the page:
+
+- `craft-bugreport-web.standalone.js`: an ES module.
+- `craft-bugreport-web.standalone.iife.js`: a classic script that sets the global `CraftBugreport`.
+- `craft-bugreport-web.standalone.css`: the styles. The JS does not inject them; link this file.
+
+Either way the API is the same: `mountReportButton(el, { config, getWorkingFile })` returns `{ unmount() }`, which removes the button and leaves `el` empty. `installErrorBuffer()` is exported from both files too.
+
+With a module script (serve the page over http or https; browsers block module scripts from `file://`):
+
+```html
+<link rel="stylesheet" href="craft-bugreport-web.standalone.css">
+<div id="report-bug"></div>
+<script type="module">
+  import { installErrorBuffer, mountReportButton } from './craft-bugreport-web.standalone.js'
+
+  installErrorBuffer()
+  const handle = mountReportButton(document.getElementById('report-bug'), {
+    config: { app: 'Outliner', version, commit, ncVersion, dropBase, dropToken },
+    getWorkingFile: () => null, // or () => ({ name, type, data })
+  })
+  // handle.unmount() removes it again
+</script>
+```
+
+With a classic script (works from `file://` too):
+
+```html
+<link rel="stylesheet" href="craft-bugreport-web.standalone.css">
+<div id="report-bug"></div>
+<script src="craft-bugreport-web.standalone.iife.js"></script>
+<script>
+  CraftBugreport.installErrorBuffer()
+  const handle = CraftBugreport.mountReportButton(document.getElementById('report-bug'), {
+    config: { app: 'Outliner', version, commit, ncVersion, dropBase, dropToken },
+    getWorkingFile: () => null,
+  })
+</script>
+```
+
+`dropBase` and `dropToken` come from the server, as above; never commit them.

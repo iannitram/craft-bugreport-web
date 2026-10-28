@@ -20,9 +20,9 @@ Status: every module below is a **stub** (checked 2026-10-28: each function thro
 | `src/components/ReportButton.vue` | The button; owns open/closed state; props `config`, `getWorkingFile` | stub | M1 |
 | `src/components/ReportForm.vue` | The form fields, screenshot picker, working-file box (always starts unticked); emits `make-report` | stub | M1, M4, M5 |
 | `src/components/ConsentScreen.vue` | File list with sizes and Show me, "Not sent yet", Send / Keep / Delete; refuses a changed fingerprint | stub | M8, M9 |
-| `src/standalone.js` | `mountReportButton(el, { config, getWorkingFile }) -> { unmount() }` for hosts without Vue (NeoCraft); built as `dist/craft-bugreport-web.standalone.js` with Vue bundled | stub (not yet created, #13) | M1 |
+| `src/standalone.js` | `mountReportButton(el, { config, getWorkingFile }) -> { unmount() }` and a re-export of `installErrorBuffer`, for hosts without Vue (NeoCraft); built as `dist/craft-bugreport-web.standalone.js` (ESM) and `.iife.js` (global `CraftBugreport`), Vue bundled, CSS in `dist/craft-bugreport-web.standalone.css` | present | M1 |
 | `tests/skeleton.test.js` | Smoke test: the public surface and the core functions exist. Each module's issue adds its own `tests/<module>.test.js` (Vitest, jsdom) and trims this file | present (smoke only) | all |
-| `package.json`, `vite.config.mjs`, `vitest.config.mjs`, `eslint.config.mjs` | One runtime dependency, `fflate`; Vue 3 is a peer dependency. Vite library mode builds `src/index.js` to one ESM file `dist/craft-bugreport-web.js` with Vue external. No standalone build is configured yet (#13); no lockfile yet | present | - |
+| `package.json`, `vite.config.mjs`, `vitest.config.mjs`, `eslint.config.mjs` | One runtime dependency, `fflate`; Vue 3 is a peer dependency. Vite library mode builds `src/index.js` to one ESM file `dist/craft-bugreport-web.js` with Vue external (`vite.config.mjs`). `vite.standalone.config.mjs` builds `src/standalone.js` with Vue bundled, as ESM and IIFE; `npm run build` runs both in sequence. No lockfile yet | present | - |
 
 ## How it fits together
 
@@ -52,4 +52,4 @@ flowchart LR
 
 ## Build and test
 
-`npm install`, `npm run lint`, `npm test`, `npm run build` (Vite library mode, ESM, Vue external). CI: `.github/workflows/check.yml` runs the tests on Linux, macOS and Windows (GitHub-hosted runners); lint and the build run on Linux only, because ESLint hung on the Windows runner. It uses `npm install` until a lockfile lands.
+`npm install`, `npm run lint`, `npm test`, `npm run build` (two Vite builds: the library, ESM with Vue external; the standalone bundles, ESM and IIFE with Vue inside). `tests/standalone.bundle.test.js` reads the standalone bundles and skips them when they are not built; CI runs it on Linux after the build. CI: `.github/workflows/check.yml` runs the tests on Linux, macOS and Windows (GitHub-hosted runners); lint and the build run on Linux only, because ESLint hung on the Windows runner. It uses `npm install` until a lockfile lands.

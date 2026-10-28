@@ -6,7 +6,8 @@
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "exports": {
-    ".": "./src/index.js"
+    ".": "./src/index.js",
+    "./standalone": "./dist/craft-bugreport-web.standalone.js"
   },
   "main": "./src/index.js",
   "module": "./src/index.js",
@@ -15,7 +16,7 @@
     "src"
   ],
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && vite build --config vite.standalone.config.mjs",
     "lint": "eslint .",
     "test": "vitest run"
   },
