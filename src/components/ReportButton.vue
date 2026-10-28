@@ -1,5 +1,9 @@
 <template>
 	<div class="craft-bugreport-reportbutton">
+		<p v-if="configError" role="alert" class="craft-bugreport-reportbutton__error">
+			{{ configError }}
+		</p>
+		<template v-else>
 		<button
 			ref="button"
 			type="button"
@@ -33,10 +37,12 @@
 			@result="onResult"
 			@keep="closeConsent"
 			@delete="deleteReport" />
+		</template>
 	</div>
 </template>
 
 <script>
+import { relayProblem } from '../core/relay.js'
 import ConsentScreen from './ConsentScreen.vue'
 import ReportForm from './ReportForm.vue'
 
@@ -49,6 +55,13 @@ export default {
 	props: {
 		config: { type: Object, required: true },
 		getWorkingFile: { type: Function, default: null },
+	},
+
+	computed: {
+		// A config that sets both relayUrl and a drop address is refused here: nothing is shown to send with.
+		configError() {
+			return relayProblem(this.config)
+		},
 	},
 
 	data() {
@@ -109,6 +122,11 @@ export default {
 <style scoped>
 .craft-bugreport-reportbutton__review {
 	margin-left: 8px;
+}
+
+.craft-bugreport-reportbutton__error {
+	margin: 0;
+	color: var(--color-error, #c9302c);
 }
 
 .craft-bugreport-reportbutton__open,

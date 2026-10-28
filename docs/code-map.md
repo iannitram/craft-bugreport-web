@@ -16,7 +16,8 @@ Status: every module below is a **stub** (checked 2026-10-28: each function thro
 | `src/core/filename.js` | `dropFileName(app, now, randomHex) -> string` (`<App>-web-<YYYYMMDDTHHMMSSZ>-<8 hex>.zip`) | stub | M9 |
 | `src/core/zip.js` | `buildZip(entries: {name, data: Uint8Array}[]) -> Uint8Array`; `fingerprint(bytes) -> Promise<string>` (hex SHA-256) | stub | M7 |
 | `src/core/report.js` | `buildReport({ config, whatHappened, expected, screenshot, includeWorkingFile, getWorkingFile, errorLines }) -> Promise<Report>` where `Report = { files: {name, size, data, sentAsIs}[], zip, fingerprint, manifest }`; `MAX_SCREENSHOT_BYTES = 8 * 1024 * 1024` | stub | M3-M7 |
-| `src/core/upload.js` | `sendReport(report, { dropBase, dropToken, app, fetchImpl = fetch, sleep, now, randomHex }) -> Promise<{ ok: boolean, status?: number, message: string }>` | stub | M9, M10 |
+| `src/core/upload.js` | `sendReport(report, { relayUrl, headers, dropBase, dropToken, app, fetchImpl = fetch, sleep, now, randomHex }) -> Promise<{ ok: boolean, status?: number, message: string }>`. **Relay mode** (the page's mode): when `relayUrl` is set, POSTs the zip as multipart (one field `report`, file name `dropFileName`, `credentials: 'same-origin'`, `redirect: 'error'`, the configured `headers` only) to the host's own server; any 2xx is sent; 5xx and network errors retry 3 times (1 s, 2 s), 4xx do not; messages for 401/403, 413, 429, other 4xx and 5xx/network never include the response body or headers. A failed relay POST never falls back to the drop. **Direct drop** (`dropBase` + `dropToken`, no `relayUrl`): PUT straight to the File Drop, for non-browser hosts only, never in a page. `relayUrl` with `dropBase` or `dropToken` is refused before any fetch. The fingerprint is checked first | stub | M9, M10 |
+| `src/core/relay.js` | `relayProblem(config) -> string` (`''` when fine; the conflict and bad-`relayUrl` messages); `isAllowedRelayUrl(relayUrl) -> boolean` (same origin as the page; https, or http on `localhost`/`127.0.0.1`; no credentials) | present | M9, M10 |
 | `src/components/ReportButton.vue` | The button; owns open/closed state; props `config`, `getWorkingFile` | stub | M1 |
 | `src/components/ReportForm.vue` | The form fields, screenshot picker, working-file box (always starts unticked); emits `make-report` | stub | M1, M4, M5 |
 | `src/components/ConsentScreen.vue` | File list with sizes and Show me, "Not sent yet", Send / Keep / Delete; refuses a changed fingerprint | stub | M8, M9 |
@@ -33,7 +34,9 @@ flowchart LR
   RB --> RF[ReportForm] -->|make-report| R[report.buildReport]
   R --> M[mask] & MF[manifest] & Z[zip + fingerprint]
   EB --> R
-  R --> CS[ConsentScreen] -->|Send| U[upload.sendReport] -->|PUT| FD[(File Drop)]
+  R --> CS[ConsentScreen] -->|Send| U[upload.sendReport]
+  U -->|relay mode: POST relayUrl| SRV[host's own server] -->|PUT, server side| FD[(File Drop)]
+  U -.->|direct drop: non-browser hosts only| FD
   U --> FN[filename]
 ```
 
@@ -48,7 +51,7 @@ flowchart LR
 1. `npm install github:iannitram/craft-bugreport-web#v1.0.0`.
 2. Call `installErrorBuffer()` first thing in `main.js`.
 3. Render `<ReportButton :config :get-working-file>` in the app's navigation or settings area.
-4. Get `dropBase` and `dropToken` from the server (initial state from the app's own config); never commit them.
+4. Pass `relayUrl` (a URL on the app's own origin) and `headers` (`requesttoken` for Nextcloud) in `config`. The app's server route forwards the zip to the File Drop with its own `bug_drop_base` and `bug_drop_token`; the page never gets a drop address or token. Passing both `relayUrl` and `dropBase`/`dropToken` is refused. See README, "Sending from a page: relay mode". Direct drop (`dropBase`, `dropToken`) is for non-browser hosts only.
 
 ## Build and test
 
