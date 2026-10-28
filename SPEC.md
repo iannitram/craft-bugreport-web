@@ -2,7 +2,7 @@
 
 **1.0 means:** a Craft web app inside Nextcloud can mount one "Report a bug" button that collects what happened, the app's recent errors, an optional screenshot and an optional copy of the open document, shows the user every file, and only after they press Send puts a launcher-format report zip into the owner's File Drop, where the existing bug intake reads it unchanged.
 
-**Approval:** 2026-10-26, the owner, in the Project Manager session's question tool: "Yes, a 1.0 Must (Recommended)", "Launcher set, browser version (Recommended)", "Same File Drop (Recommended)", "One shared module repo (Recommended)". The request, in the owner's words: "New feature request for both apps - bug logging button with the same pathway as the launcher bug submission pathway".
+**Approval:** 2026-10-26, the maintainer. Request: a bug logging button for both apps, using the same pathway as the launcher bug submission. Decisions: a 1.0 Must; launcher set, browser version; same File Drop; one shared module repo.
 
 A changed Must or Won't sets this back to "not yet" until the owner approves again.
 
@@ -26,7 +26,7 @@ A changed Must or Won't sets this back to "not yet" until the owner approves aga
 
 - No automatic sending, ever; no "send without asking" setting.
 - No crash detection beyond the error buffer (the host page has no process to watch).
-- No account login or Nextcloud credentials: the File Drop is upload-only and public on the tailnet.
+- No account login or Nextcloud credentials: the File Drop is upload-only and reachable only by the host app's configured address.
 - No reading or listing of the File Drop, and no follow-up on a sent report.
 - No server-side component in this repo (a host app that wants one builds it itself).
 - No screenshots taken by the module itself (browsers do not allow it without extra permissions); the user picks an image.
