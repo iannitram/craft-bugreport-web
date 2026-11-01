@@ -10,6 +10,7 @@
 | 2. Lockfile | commit package-lock.json; CI switches to `npm ci` | - | #1 (Easy) |
 | 3. UI | ReportButton + ReportForm (M1, M4, M5), ConsentScreen (M8) | M1, M4, M5, M8 | #9 form, #10 consent screen, #13 standalone mount for non-Vue hosts (Medium) |
 | 4. Release | tag v1.0.0 after a manual send from one browser per OS into a test File Drop (M11); host apps pin the tag | M11 | #12 (Medium) |
+| 5. Flight recorder (1.1) | timeline ring buffer, event formatting and masking, page hooks, `timeline.json` in the report, strike events on the consent screen, the "Something went wrong" notice, release v1.1.0 | M12-M16 | filed 2026-11-01, all blocked by #12 |
 
 ## Mac, PC and Linux (R04)
 

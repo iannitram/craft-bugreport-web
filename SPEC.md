@@ -25,11 +25,29 @@ A changed Must or Won't sets this back to "not yet" until the owner approves aga
 ## Won'ts
 
 - No automatic sending, ever; no "send without asking" setting.
-- No crash detection beyond the error buffer (the host page has no process to watch).
+- No crash detection beyond the error buffer and, from 1.1, the timeline (the host page has no process to watch).
 - No account login or Nextcloud credentials: the File Drop is upload-only and reachable only by the host app's configured address.
 - No reading or listing of the File Drop, and no follow-up on a sent report.
 - No server-side component in this repo (a host app that wants one builds it itself).
 - No screenshots taken by the module itself (browsers do not allow it without extra permissions); the user picks an image.
+
+## 1.1: flight recorder
+
+**1.1 means:** a report also carries a short, masked timeline of what the user did just before the bug (pages, buttons, failed requests, errors, the host app's own marks), the user can strike any line of it before Send, and an uncaught error offers "Something went wrong. Report it?" without ever sending on its own.
+
+**Approval:** 2026-11-01, the owner, chosen from three bold proposals (flight recorder; one-panel composer; "point at it" capture). Ship order: v1.0.0 first (#12), then 1.1. The composer and capture ideas are not approved and are not in 1.1.
+
+Why: the first real Linux sends (#12) carried an empty or near-empty `app.log`. Console errors alone rarely say how the user got there.
+
+| # | Must | Done looks like | Check |
+|---|---|---|---|
+| M12 | WHEN `installErrorBuffer()` has run (unless called with `{ timeline: false }`), THE MODULE SHALL keep the events of the last 60 seconds, at most 100: route changes (`pushState`, `replaceState`, `popstate`, `hashchange`), clicks on buttons, links and button-like roles, failed requests (`fetch` and `XMLHttpRequest`, status 400 or more or a network error), window errors and unhandled rejections, and the host's `markEvent(name)` calls; originals still run and their results are unchanged | A click, a route change and a failed fetch inside the window appear in order; an event older than 60 s is gone; the wrapped `fetch` returns the same response | Unit tests with fake timers, jsdom events and a mocked `fetch` |
+| M13 | THE MODULE SHALL record no typed text, input values, request or response bodies, headers, query strings or hashes; a click inside an input, textarea, select, contenteditable or `[data-bugreport-private]` element is recorded as label `<private>`; labels are cut to 40 characters and masked like `app.log`; a request path keeps at most 6 segments, the user name becomes `<user>`, a segment with a dot becomes `<file>`, a segment of 24+ characters becomes `<id>` | The masked event strings contain none of the test's secret words | Unit test with the expected events |
+| M14 | THE MODULE SHALL add `timeline.json` (`window_seconds`, `events[]`, `host`) to the report when it holds an event or host diagnostics, take `host` from the host's optional `getDiagnostics()` (at most 16 KB as JSON, else `{ "truncated": true }`; a throw gives `{ "error": "getDiagnostics failed" }`), mask every string in it, and record `timeline_included` in the manifest | A report built with fixed events has the expected `timeline.json` and manifest | Unit test |
+| M15 | THE consent screen SHALL list the timeline's events in "Show me", let the user strike any event, and rebuild the zip and fingerprint before Send; a struck event is not in the sent zip | Striking an event and pressing Send uploads a zip without it | Component test with a mocked fetch |
+| M16 | WHEN a window error or unhandled rejection happens and no report dialog is open, THE MODULE SHALL show a dismissible "Something went wrong. Report it?" notice (at most once per 5 minutes; Dismiss silences it for the page session; the host can turn it off with `nudge: false`); Report opens the form with "What happened?" empty and the error named above it; nothing is sent without Send | Two errors 1 minute apart show one notice; Report opens the form; no fetch happens | Component test with fake timers |
+
+1.1 Won'ts: no recording of keystrokes, input values, bodies, headers or query strings; no timeline before `installErrorBuffer()` runs; the timeline never leaves the page except inside a report the user sends.
 
 ## Problem
 

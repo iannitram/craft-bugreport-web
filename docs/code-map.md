@@ -1,26 +1,28 @@
 # Code map
 
-Describes commit: 7304979 (2026-10-28)
+Describes commit: main (2026-11-01)
 
-Status: every module below is a **stub** (checked 2026-10-28: each function throws `NotBuilt`, each component renders a placeholder; nothing has been built since the skeleton). Move a row to **present** in the PR that builds it.
+Status: every 1.0 module is **present** (built and merged 2026-10-28). The 1.1 flight recorder rows are **planned**; move a row to **present** in the PR that builds it.
 
 ## Layout
 
 | Path | Owns | Status | Musts |
 |---|---|---|---|
 | `src/index.js` | Public exports: `installErrorBuffer`, `buildReport`, `MAX_SCREENSHOT_BYTES`, `sendReport`, and the components `ReportButton`, `ReportForm`, `ConsentScreen` (`package.json` `exports` points here) | present (re-exports) | - |
-| `src/core/errorBuffer.js` | `installErrorBuffer({ size = 200 } = {}) -> { lines(): string[], uninstall(): void }`; `formatLine(level, args, date) -> string` | stub | M2 |
-| `src/core/notBuilt.js` | `NotBuilt`, the error every stub function throws; delete it with the last stub | present | - |
-| `src/core/mask.js` | `maskText(text, { userName }) -> string` | stub | M6 |
-| `src/core/manifest.js` | `buildManifest({ config, files, workingFileIncluded, screenshotIncluded, sentAsIs, now, userAgent }) -> object` | stub | M3 |
-| `src/core/filename.js` | `dropFileName(app, now, randomHex) -> string` (`<App>-web-<YYYYMMDDTHHMMSSZ>-<8 hex>.zip`) | stub | M9 |
-| `src/core/zip.js` | `buildZip(entries: {name, data: Uint8Array}[]) -> Uint8Array`; `fingerprint(bytes) -> Promise<string>` (hex SHA-256) | stub | M7 |
-| `src/core/report.js` | `buildReport({ config, whatHappened, expected, screenshot, includeWorkingFile, getWorkingFile, errorLines }) -> Promise<Report>` where `Report = { files: {name, size, data, sentAsIs}[], zip, fingerprint, manifest }`; `MAX_SCREENSHOT_BYTES = 8 * 1024 * 1024` | stub | M3-M7 |
-| `src/core/upload.js` | `sendReport(report, { relayUrl, headers, dropBase, dropToken, app, fetchImpl = fetch, sleep, now, randomHex }) -> Promise<{ ok: boolean, status?: number, message: string }>`. **Relay mode** (the page's mode): when `relayUrl` is set, POSTs the zip as multipart (one field `report`, file name `dropFileName`, `credentials: 'same-origin'`, `redirect: 'error'`, the configured `headers` only) to the host's own server; any 2xx is sent; 5xx and network errors retry 3 times (1 s, 2 s), 4xx do not; messages for 401/403, 413, 429, other 4xx and 5xx/network never include the response body or headers. A failed relay POST never falls back to the drop. **Direct drop** (`dropBase` + `dropToken`, no `relayUrl`): PUT straight to the File Drop, for non-browser hosts only, never in a page. `relayUrl` with `dropBase` or `dropToken` is refused before any fetch. The fingerprint is checked first | stub | M9, M10 |
+| `src/core/errorBuffer.js` | `installErrorBuffer({ size = 200 } = {}) -> { lines(): string[], uninstall(): void }`; `formatLine(level, args, date) -> string` | present | M2 |
+| `src/core/notBuilt.js` | `NotBuilt`, the error every stub function throws (the 1.1 recorder stubs use it); delete it with the last stub | present | - |
+| `src/core/mask.js` | `maskText(text, { userName }) -> string` | present | M6 |
+| `src/core/manifest.js` | `buildManifest({ config, files, workingFileIncluded, screenshotIncluded, sentAsIs, now, userAgent }) -> object` | present | M3 |
+| `src/core/filename.js` | `dropFileName(app, now, randomHex) -> string` (`<App>-web-<YYYYMMDDTHHMMSSZ>-<8 hex>.zip`) | present | M9 |
+| `src/core/zip.js` | `buildZip(entries: {name, data: Uint8Array}[]) -> Uint8Array`; `fingerprint(bytes) -> Promise<string>` (hex SHA-256) | present | M7 |
+| `src/core/report.js` | `buildReport({ config, whatHappened, expected, screenshot, includeWorkingFile, getWorkingFile, errorLines }) -> Promise<Report>` where `Report = { files: {name, size, data, sentAsIs}[], zip, fingerprint, manifest }`; `MAX_SCREENSHOT_BYTES = 8 * 1024 * 1024` | present | M3-M7 |
+| `src/core/upload.js` | `sendReport(report, { relayUrl, headers, dropBase, dropToken, app, fetchImpl = fetch, sleep, now, randomHex }) -> Promise<{ ok: boolean, status?: number, message: string }>`. **Relay mode** (the page's mode): when `relayUrl` is set, POSTs the zip as multipart (one field `report`, file name `dropFileName`, `credentials: 'same-origin'`, `redirect: 'error'`, the configured `headers` only) to the host's own server; any 2xx is sent; 5xx and network errors retry 3 times (1 s, 2 s), 4xx do not; messages for 401/403, 413, 429, other 4xx and 5xx/network never include the response body or headers. A failed relay POST never falls back to the drop. **Direct drop** (`dropBase` + `dropToken`, no `relayUrl`): PUT straight to the File Drop, for non-browser hosts only, never in a page. `relayUrl` with `dropBase` or `dropToken` is refused before any fetch. The fingerprint is checked first | present | M9, M10 |
 | `src/core/relay.js` | `relayProblem(config) -> string` (`''` when fine; the conflict and bad-`relayUrl` messages); `isAllowedRelayUrl(relayUrl) -> boolean` (same origin as the page; https, or http on `localhost`/`127.0.0.1`; no credentials) | present | M9, M10 |
-| `src/components/ReportButton.vue` | The button; owns open/closed state; props `config`, `getWorkingFile` | stub | M1 |
-| `src/components/ReportForm.vue` | The form fields, screenshot picker, working-file box (always starts unticked); emits `make-report` | stub | M1, M4, M5 |
-| `src/components/ConsentScreen.vue` | File list with sizes and Show me, "Not sent yet", Send / Keep / Delete; refuses a changed fingerprint | stub | M8, M9 |
+| `src/core/recorder.js` | 1.1 flight recorder (M12, M13). `createTimeline({ windowMs = 60000, max = 100 } = {}) -> { add(event), events(now: Date): object[], clear() }`; `maskPath(url, userName) -> string`; `clickLabel(element, userName) -> { role, label } \| null`; `formatEvent(kind, detail, date, userName) -> object`; `installRecorder({ timeline }) -> { uninstall() }` (history, click, fetch, XHR hooks); `markEvent(name)` | planned (stubs) | M12, M13 |
+| `src/components/ErrorNotice.vue` | 1.1 "Something went wrong. Report it?" notice, owned by `ReportButton` (M16) | planned | M16 |
+| `src/components/ReportButton.vue` | The button; owns open/closed state; props `config`, `getWorkingFile` | present | M1 |
+| `src/components/ReportForm.vue` | The form fields, screenshot picker, working-file box (always starts unticked); emits `make-report` | present | M1, M4, M5 |
+| `src/components/ConsentScreen.vue` | File list with sizes and Show me, "Not sent yet", Send / Keep / Delete; refuses a changed fingerprint | present | M8, M9 |
 | `src/standalone.js` | `mountReportButton(el, { config, getWorkingFile }) -> { unmount() }` and a re-export of `installErrorBuffer`, for hosts without Vue (NeoCraft); built as `dist/craft-bugreport-web.standalone.js` (ESM) and `.iife.js` (global `CraftBugreport`), Vue bundled, CSS in `dist/craft-bugreport-web.standalone.css` | present | M1 |
 | `tests/skeleton.test.js` | Smoke test: the public surface and the core functions exist. Each module's issue adds its own `tests/<module>.test.js` (Vitest, jsdom) and trims this file | present (smoke only) | all |
 | `package.json`, `vite.config.mjs`, `vitest.config.mjs`, `eslint.config.mjs` | One runtime dependency, `fflate`; Vue 3 is a peer dependency. Vite library mode builds `src/index.js` to one ESM file `dist/craft-bugreport-web.js` with Vue external (`vite.config.mjs`). `vite.standalone.config.mjs` builds `src/standalone.js` with Vue bundled, as ESM and IIFE; `npm run build` runs both in sequence. No lockfile yet | present | - |
@@ -42,7 +44,7 @@ flowchart LR
 
 ## Report format (must match the desktop launcher)
 
-- Zip entries: `what-happened.txt` ("What happened:\n<text>\n\nWhat I expected:\n<text>\n"), `app.log` (error buffer lines), `manifest.json`, `screenshot.<ext>` (optional), `working-file.<ext>` (optional). No folder inside the zip.
+- Zip entries (1.1 adds optional `timeline.json`: `{ window_seconds, events[], host }`, and manifest field `timeline_included`): `what-happened.txt` ("What happened:\n<text>\n\nWhat I expected:\n<text>\n"), `app.log` (error buffer lines), `manifest.json`, `screenshot.<ext>` (optional), `working-file.<ext>` (optional). No folder inside the zip.
 - `manifest.json`: `kind` "manual", `app`, `version`, `commit`, `os`, `arch`, `exit` null, `signature` null, `created` (ISO UTC), `files[]` (entry names), `working_file_included`, `screenshot_included`, `names_masked`, `sent_as_is[]`, plus `nextcloud` (version string) and `browser` (name and version).
 - Name in the drop: `<App>-web-<UTC>-<8 hex>.zip`; the drop never overwrites.
 
