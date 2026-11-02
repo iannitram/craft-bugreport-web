@@ -1,6 +1,6 @@
 # Code map
 
-Describes commit: main (2026-11-01)
+Describes commit: f731efd (2026-11-01)
 
 Status: every 1.0 module is **present** (built and merged 2026-10-28). The 1.1 flight recorder rows are **planned**; move a row to **present** in the PR that builds it.
 
@@ -24,8 +24,9 @@ Status: every 1.0 module is **present** (built and merged 2026-10-28). The 1.1 f
 | `src/components/ReportForm.vue` | The form fields, screenshot picker, working-file box (always starts unticked); emits `make-report` | present | M1, M4, M5 |
 | `src/components/ConsentScreen.vue` | File list with sizes and Show me, "Not sent yet", Send / Keep / Delete; refuses a changed fingerprint | present | M8, M9 |
 | `src/standalone.js` | `mountReportButton(el, { config, getWorkingFile }) -> { unmount() }` and a re-export of `installErrorBuffer`, for hosts without Vue (NeoCraft); built as `dist/craft-bugreport-web.standalone.js` (ESM) and `.iife.js` (global `CraftBugreport`), Vue bundled, CSS in `dist/craft-bugreport-web.standalone.css` | present | M1 |
+| `tools/no-drop-secrets.mjs` | CI check: scans every tracked file for a Tailscale host name (`.ts.net`) or a real File Drop token in a drop URL, so no secret or private address ships in the package | present | - |
 | `tests/skeleton.test.js` | Smoke test: the public surface and the core functions exist. Each module's issue adds its own `tests/<module>.test.js` (Vitest, jsdom) and trims this file | present (smoke only) | all |
-| `package.json`, `vite.config.mjs`, `vitest.config.mjs`, `eslint.config.mjs` | One runtime dependency, `fflate`; Vue 3 is a peer dependency. Vite library mode builds `src/index.js` to one ESM file `dist/craft-bugreport-web.js` with Vue external (`vite.config.mjs`). `vite.standalone.config.mjs` builds `src/standalone.js` with Vue bundled, as ESM and IIFE; `npm run build` runs both in sequence. No lockfile yet | present | - |
+| `package.json`, `vite.config.mjs`, `vitest.config.mjs`, `eslint.config.mjs` | One runtime dependency, `fflate`; Vue 3 is a peer dependency. Vite library mode builds `src/index.js` to one ESM file `dist/craft-bugreport-web.js` with Vue external (`vite.config.mjs`). `vite.standalone.config.mjs` builds `src/standalone.js` with Vue bundled, as ESM and IIFE; `npm run build` runs both in sequence. `package-lock.json` is committed | present | - |
 
 ## How it fits together
 
@@ -57,4 +58,4 @@ flowchart LR
 
 ## Build and test
 
-`npm install`, `npm run lint`, `npm test`, `npm run build` (two Vite builds: the library, ESM with Vue external; the standalone bundles, ESM and IIFE with Vue inside). `tests/standalone.bundle.test.js` reads the standalone bundles and skips them when they are not built; CI runs it on Linux after the build. CI: `.github/workflows/check.yml` runs the tests on Linux, macOS and Windows (GitHub-hosted runners); lint and the build run on Linux only, because ESLint hung on the Windows runner. It uses `npm install` until a lockfile lands.
+`npm ci` (or `npm install`), `npm run lint`, `npm test`, `npm run build` (two Vite builds: the library, ESM with Vue external; the standalone bundles, ESM and IIFE with Vue inside). `tests/standalone.bundle.test.js` reads the standalone bundles and skips them when they are not built; CI runs it on Linux after the build. CI: `.github/workflows/check.yml` runs the tests on Linux, macOS and Windows (GitHub-hosted runners); lint and the build run on Linux only, because ESLint hung on the Windows runner. It installs with `npm ci` from the committed lockfile, and the Linux leg also runs `node tools/no-drop-secrets.mjs` and the standalone bundle check (`BUNDLE_CHECK=1 npx vitest run tests/standalone.bundle.test.js`).
