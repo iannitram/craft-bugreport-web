@@ -3,28 +3,30 @@ import { NotBuilt } from './notBuilt.js'
 
 export function createTimeline({ windowMs = 60000, max = 100 } = {}) {
 	const events = []
-	
+
 	return {
 		add(event) {
-			if (event === null || event === undefined) return
-			
+			if (event === null || event === undefined) {
+				return
+			}
+
 			events.push(event)
-			
+
 			// Keep only the newest max events
 			if (events.length > max) {
 				events.shift()
 			}
 		},
-		
+
 		events(now) {
 			const cutoff = now.getTime() - windowMs
 			// Filter events within the time window and return a copy
-			return events.filter(event => Date.parse(event.t) >= cutoff).slice()
+			return events.filter((event) => Date.parse(event.t) >= cutoff).slice()
 		},
-		
+
 		clear() {
 			events.length = 0
-		}
+		},
 	}
 }
 
