@@ -18,6 +18,7 @@ function mountButton(props = {}) {
 	const wrapper = mount(ReportButton, {
 		props: { config, ...props },
 		attachTo: document.body,
+		global: { stubs: { teleport: true } },
 	})
 	wrappers.push(wrapper)
 	return wrapper

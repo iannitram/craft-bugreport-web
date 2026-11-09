@@ -32,8 +32,9 @@ describe('mountReportButton', () => {
 		host.querySelector('button').click()
 		await flushPromises()
 
-		expect(host.querySelector('[role="dialog"]')).not.toBeNull()
-		expect(host.querySelector('textarea')).not.toBeNull()
+		// The dialog is teleported to the page body (#41).
+		expect(document.querySelector('[role="dialog"]')).not.toBeNull()
+		expect(document.querySelector('textarea')).not.toBeNull()
 
 		handle.unmount()
 	})
@@ -47,7 +48,7 @@ describe('mountReportButton', () => {
 
 		expect(host.innerHTML).toBe('')
 		expect(host.querySelector('button')).toBeNull()
-		expect(host.querySelector('[role="dialog"]')).toBeNull()
+		expect(document.querySelector('[role="dialog"]')).toBeNull()
 	})
 
 	it('re-exports installErrorBuffer', () => {

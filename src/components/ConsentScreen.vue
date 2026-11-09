@@ -7,13 +7,23 @@
 			aria-modal="true"
 			:aria-labelledby="ids.title"
 			@keydown="onKeydown">
-			<h2
-				:id="ids.title"
-				ref="title"
-				tabindex="-1"
-				class="craft-bugreport-dialog__title">
-				Check what will be sent
-			</h2>
+			<div class="craft-bugreport-dialog__header">
+				<h2
+					:id="ids.title"
+					ref="title"
+					tabindex="-1"
+					class="craft-bugreport-dialog__title">
+					Check what will be sent
+				</h2>
+				<button
+					type="button"
+					class="craft-bugreport-close"
+					aria-label="Close"
+					title="Close"
+					@click="close">
+					×
+				</button>
+			</div>
 			<p class="craft-bugreport-hint">
 				Nothing is sent until you press Send. Every file in the report is listed here.
 			</p>
@@ -55,7 +65,16 @@
 				{{ notice }}
 			</p>
 
-			<div class="craft-bugreport-row craft-bugreport-actions">
+			<div v-if="sent" class="craft-bugreport-row craft-bugreport-actions">
+				<button
+					ref="closeButton"
+					type="button"
+					class="craft-bugreport-button craft-bugreport-button--primary"
+					@click="close">
+					Close
+				</button>
+			</div>
+			<div v-else class="craft-bugreport-row craft-bugreport-actions">
 				<button type="button" class="craft-bugreport-button" @click="keep">
 					Keep
 				</button>
@@ -84,6 +103,8 @@ import { sendReport } from '../core/upload.js'
 
 const NOT_SET_UP = 'Bug reports are not set up for this app (no drop address).'
 const TEXT_EXTENSIONS = ['txt', 'log', 'json', 'opml', 'md']
+// A sent report has nothing left to do, so its screen closes on its own after this long (#41).
+export const AUTO_CLOSE_MS = 5000
 const IMAGE_TYPES = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp' }
 
 let consentCount = 0
@@ -116,6 +137,7 @@ export default {
 			sending: false,
 			previewName: '',
 			preview: null,
+			autoCloseTimer: null,
 		}
 	},
 
@@ -152,11 +174,27 @@ export default {
 		},
 	},
 
+	watch: {
+		// Once sent, Close takes focus and the screen closes on its own a moment later (#41).
+		sent: {
+			immediate: true,
+			handler(now) {
+				if (!now) {
+					return
+				}
+				this.$nextTick(() => this.$refs.closeButton?.focus())
+				clearTimeout(this.autoCloseTimer)
+				this.autoCloseTimer = setTimeout(() => this.close(), AUTO_CLOSE_MS)
+			},
+		},
+	},
+
 	mounted() {
 		this.$refs.title.focus()
 	},
 
 	beforeUnmount() {
+		clearTimeout(this.autoCloseTimer)
 		this.closePreview()
 	},
 
@@ -204,10 +242,21 @@ export default {
 			this.$emit('keep')
 		},
 
+		// The corner ×, Escape, and Close after Sent: an unsent report is kept, a sent one is done with.
+		close() {
+			clearTimeout(this.autoCloseTimer)
+			if (!this.sent) {
+				this.keep()
+				return
+			}
+			this.closePreview()
+			this.$emit('delete')
+		},
+
 		onKeydown(event) {
 			if (event.key === 'Escape') {
 				event.preventDefault()
-				this.keep()
+				this.close()
 				return
 			}
 			if (event.key === 'Tab') {
@@ -283,9 +332,34 @@ export default {
 	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
+.craft-bugreport-dialog__header {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 8px;
+}
+
 .craft-bugreport-dialog__title {
 	margin: 0 0 8px;
 	font-size: 1.3em;
+}
+
+.craft-bugreport-close {
+	flex: none;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: none;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--color-main-text, #222);
+	font-size: 1.4em;
+	line-height: 1;
+	cursor: pointer;
+}
+
+.craft-bugreport-close:hover {
+	background: var(--color-background-hover, #f2f2f2);
 }
 
 .craft-bugreport-files {
