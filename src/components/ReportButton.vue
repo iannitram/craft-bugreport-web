@@ -14,12 +14,15 @@
 				{{ label }}
 			</button>
 
-			<ReportForm
-				v-if="open"
-				:config="config"
-				:getWorkingFile="getWorkingFile"
-				@makeReport="onReportBuilt"
-				@close="closeForm" />
+			<!-- Page level, so a host's sidebar (a transformed or clipped parent) cannot hold the dialogs (#41). -->
+			<Teleport to="body">
+				<ReportForm
+					v-if="open"
+					:config="config"
+					:getWorkingFile="getWorkingFile"
+					@makeReport="onReportBuilt"
+					@close="closeForm" />
+			</Teleport>
 
 			<button
 				v-if="report && !consentOpen"
@@ -29,14 +32,16 @@
 				Review the kept report
 			</button>
 
-			<ConsentScreen
-				v-if="report && consentOpen"
-				:report="report"
-				:config="config"
-				:result="result"
-				@result="onResult"
-				@keep="closeConsent"
-				@delete="deleteReport" />
+			<Teleport to="body">
+				<ConsentScreen
+					v-if="report && consentOpen"
+					:report="report"
+					:config="config"
+					:result="result"
+					@result="onResult"
+					@keep="closeConsent"
+					@delete="deleteReport" />
+			</Teleport>
 		</template>
 	</div>
 </template>

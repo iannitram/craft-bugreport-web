@@ -45,7 +45,7 @@ afterEach(() => {
 })
 
 function mountButton(config) {
-	const wrapper = mount(ReportButton, { props: { config }, attachTo: document.body })
+	const wrapper = mount(ReportButton, { props: { config }, attachTo: document.body, global: { stubs: { teleport: true } } })
 	wrappers.push(wrapper)
 	return wrapper
 }

@@ -46,6 +46,8 @@ function mountButton(props = {}) {
 	const wrapper = mount(ReportButton, {
 		props: { config, ...props },
 		attachTo: document.body,
+		// The dialogs teleport to <body> (#41); stubbed here so wrapper.find reaches them. One test mounts without it.
+		global: { stubs: { teleport: true } },
 	})
 	wrappers.push(wrapper)
 	return wrapper
@@ -126,7 +128,7 @@ describe('ConsentScreen', () => {
 		expect(init.method).toBe('PUT')
 	})
 
-	it('Send with a mocked 201 shows "Sent" and disables Send', async () => {
+	it('Send with a mocked 201 shows "Sent" and replaces Send with Close', async () => {
 		const wrapper = mountButton()
 		await makeReportThrough(wrapper)
 
@@ -134,7 +136,8 @@ describe('ConsentScreen', () => {
 
 		await vi.waitFor(() => expect(consentStatus()).toBe('Sent'))
 		expect(consentDialog().textContent).toContain('Sent. Thank you.')
-		expect(buttonByText(wrapper, 'Send').element.disabled).toBe(true)
+		expect(buttonByText(wrapper, 'Send')).toBeUndefined()
+		expect(buttonByText(wrapper, 'Close')).toBeDefined()
 	})
 
 	it('a changed fingerprint shows the refusal and makes no fetch call', async () => {
@@ -171,20 +174,95 @@ describe('ConsentScreen', () => {
 		expect(fetchMock).not.toHaveBeenCalled()
 	})
 
-	it('Keep closes the screen; reopening shows the kept report with its "Sent" state', async () => {
+	it('Keep closes the screen; reopening shows the kept report, still not sent', async () => {
 		const wrapper = mountButton()
 		await makeReportThrough(wrapper)
-		await buttonByText(wrapper, 'Send').trigger('click')
-		await vi.waitFor(() => expect(consentStatus()).toBe('Sent'))
 
 		await buttonByText(wrapper, 'Keep').trigger('click')
 		await flushPromises()
 		expect(consentDialog()).toBeNull()
-		expect(fetchMock).toHaveBeenCalledTimes(1)
 
 		await buttonByText(wrapper, 'Review the kept report').trigger('click')
 		await flushPromises()
-		expect(consentStatus()).toBe('Sent')
+		expect(consentStatus()).toBe('Not sent yet')
+		expect(fetchMock).not.toHaveBeenCalled()
+	})
+
+	it('after Sent the only action is Close, which has focus and closes the screen for good (#41)', async () => {
+		const wrapper = mountButton()
+		await makeReportThrough(wrapper)
+		await buttonByText(wrapper, 'Send').trigger('click')
+		await vi.waitFor(() => expect(consentStatus()).toBe('Sent'))
+		await flushPromises()
+
+		const actions = [...consentDialog().querySelectorAll('.craft-bugreport-actions button')].map((button) => button.textContent.trim())
+		expect(actions).toEqual(['Close'])
+		expect(document.activeElement).toBe(buttonByText(wrapper, 'Close').element)
+
+		await buttonByText(wrapper, 'Close').trigger('click')
+		await flushPromises()
+		expect(consentDialog()).toBeNull()
+		expect(buttonByText(wrapper, 'Review the kept report')).toBeUndefined()
+		expect(document.activeElement).toBe(wrapper.find('button').element)
+		expect(fetchMock).toHaveBeenCalledTimes(1)
+	})
+
+	it('the screen closes on its own 5 seconds after Sent (#41)', async () => {
+		const wrapper = mountButton()
+		await makeReportThrough(wrapper)
+		vi.useFakeTimers()
+		try {
+			await buttonByText(wrapper, 'Send').trigger('click')
+			await vi.waitFor(() => expect(consentStatus()).toBe('Sent'))
+			await vi.advanceTimersByTimeAsync(4900)
+			expect(consentDialog()).not.toBeNull()
+			await vi.advanceTimersByTimeAsync(200)
+			expect(consentDialog()).toBeNull()
+			expect(buttonByText(wrapper, 'Review the kept report')).toBeUndefined()
+		} finally {
+			vi.useRealTimers()
+		}
+	})
+
+	it('the corner × keeps an unsent report and closes a sent one (#41)', async () => {
+		const wrapper = mountButton()
+		await makeReportThrough(wrapper)
+		const corner = () => consentDialog().querySelector('button[aria-label="Close"]')
+		expect(corner()).not.toBeNull()
+
+		corner().click()
+		await flushPromises()
+		expect(consentDialog()).toBeNull()
+		await buttonByText(wrapper, 'Review the kept report').trigger('click')
+		await flushPromises()
+
+		await buttonByText(wrapper, 'Send').trigger('click')
+		await vi.waitFor(() => expect(consentStatus()).toBe('Sent'))
+		corner().click()
+		await flushPromises()
+		expect(consentDialog()).toBeNull()
+		expect(buttonByText(wrapper, 'Review the kept report')).toBeUndefined()
+	})
+
+	it('the form and the consent screen render at page level, so a host sidebar cannot hold them (#41)', async () => {
+		const host = document.createElement('nav')
+		host.style.transform = 'translateX(0)'
+		document.body.appendChild(host)
+		const wrapper = mount(ReportButton, { props: { config }, attachTo: host })
+		wrappers.push(wrapper)
+
+		host.querySelector('button').click()
+		await flushPromises()
+		const form = document.querySelector('[role="dialog"]')
+		expect(form).not.toBeNull()
+		expect(host.contains(form)).toBe(false)
+
+		document.querySelector('textarea').value = 'The page froze'
+		document.querySelector('textarea').dispatchEvent(new Event('input'))
+		;[...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Make the report').click()
+		await flushPromises()
+		expect(consentDialog()).not.toBeNull()
+		expect(host.contains(consentDialog())).toBe(false)
 	})
 
 	it('focus moves into the consent screen after the form builds a report, and back to the button when it closes', async () => {
