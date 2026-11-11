@@ -1,5 +1,19 @@
 # Roadmap
 
+Updated: 2026-11-11
+
+features:
+- report-core: Build the report in the page: error buffer, masking, manifest, zip, fingerprint and buildReport (M2, M3, M6, M7)
+- upload: Send the report: File Drop name, retries, relay mode and the no-secrets check (M9, M10)
+- form: The Report a bug button and form (M1, M4, M5)
+- consent: The consent screen: every file shown, nothing sent until Send (M8)
+- standalone: The standalone mount and bundle for hosts without Vue
+- build-ci: The lockfile and the checks on Mac, PC and Linux
+- release: The v1.0.0 release after a real send from each OS (M11)
+- recorder: Flight recorder, wholly After 1.0 (1.1): the masked 60-second timeline, page hooks, timeline.json and the v1.1.0 release (M12-M14)
+- timeline-consent: Wholly After 1.0 (1.1): the consent screen shows the timeline and lets the user strike events (M15)
+- error-notice: Wholly After 1.0 (1.1): the "Something went wrong. Report it?" notice (M16)
+
 1.0: see SPEC.md. Every row names its issue; issues follow the pipeline's RUBRIC (sizes, Qwen briefs on Easy ones).
 
 ## Stages
