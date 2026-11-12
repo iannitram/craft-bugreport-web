@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { sendReport } from '../src/core/upload.js'
 import { buildZip, fingerprint } from '../src/core/zip.js'
 
@@ -49,6 +49,7 @@ describe('sendReport', () => {
 			method: 'PUT',
 			headers: { 'Content-Type': 'application/zip' },
 			body: report.zip,
+			signal: expect.any(AbortSignal),
 		})
 		expect(result).toEqual({ ok: true, status: 201, message: 'Sent. Thank you.' })
 	})
@@ -257,5 +258,93 @@ describe('sendReport in relay mode', () => {
 		const result = await sendReport(report, { ...baseOptions, relayUrl: RELAY, headers: {}, fetchImpl, sleep })
 		expect(fetchImpl).not.toHaveBeenCalled()
 		expect(result.message).toBe(CONFLICT)
+	})
+})
+
+// A fetch that never settles on its own: it rejects only when its abort signal fires.
+function hangingFetch() {
+	return vi.fn((url, init) => new Promise((resolve, reject) => {
+		init.signal?.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')))
+	}))
+}
+
+const TIMED_OUT = 'The send timed out. It is kept; try again.'
+
+describe('sendReport timeout (#45)', () => {
+	afterEach(() => {
+		// A test that times out never reaches its finally; do not leak fake timers into the next one.
+		vi.useRealTimers()
+	})
+
+	it('a fetch that never settles is a failure once the timeout passes, with no retry', async () => {
+		const fetchImpl = hangingFetch()
+		const sleep = vi.fn(async () => {})
+		const result = await sendReport(report, { ...baseOptions, fetchImpl, sleep, timeoutMs: 20 })
+		expect(result).toEqual({ ok: false, message: TIMED_OUT })
+		expect(fetchImpl).toHaveBeenCalledTimes(1)
+		expect(sleep).not.toHaveBeenCalled()
+	})
+
+	it('the default timeout is 30 seconds', async () => {
+		// Only the send timer is faked, so the loop below can wait on real setImmediate
+		// until the fetch has started (and its timer is armed) before time moves.
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+		try {
+			const fetchImpl = hangingFetch()
+			const pending = sendReport(report, { ...baseOptions, fetchImpl, sleep: async () => {} })
+			while (fetchImpl.mock.calls.length === 0) {
+				await new Promise((resolve) => setImmediate(resolve))
+			}
+			await vi.advanceTimersByTimeAsync(29_999)
+			let settled = false
+			pending.then(() => {
+				settled = true
+			})
+			await vi.advanceTimersByTimeAsync(0)
+			expect(settled).toBe(false)
+			await vi.advanceTimersByTimeAsync(1)
+			expect(await pending).toEqual({ ok: false, message: TIMED_OUT })
+		} finally {
+			vi.useRealTimers()
+		}
+	})
+
+	it('a timed-out relay POST is a failure too', async () => {
+		const fetchImpl = hangingFetch()
+		const result = await sendReport(report, relayOptions({ fetchImpl, sleep: async () => {}, timeoutMs: 20 }))
+		expect(result).toEqual({ ok: false, message: TIMED_OUT })
+		expect(fetchImpl).toHaveBeenCalledTimes(1)
+	})
+
+	it('a caller signal that aborts a send in flight stops it, with no retry', async () => {
+		const fetchImpl = hangingFetch()
+		const controller = new AbortController()
+		const pending = sendReport(report, { ...baseOptions, fetchImpl, sleep: async () => {}, signal: controller.signal })
+		await vi.waitFor(() => expect(fetchImpl).toHaveBeenCalledTimes(1))
+		controller.abort()
+		expect(await pending).toEqual({ ok: false, message: 'The send was cancelled. It is kept; try again.' })
+		expect(fetchImpl).toHaveBeenCalledTimes(1)
+		expect(fetchImpl.mock.calls[0][1].signal.aborted).toBe(true)
+	})
+
+	it('a caller signal that is already aborted sends nothing', async () => {
+		const fetchImpl = hangingFetch()
+		const controller = new AbortController()
+		controller.abort()
+		const result = await sendReport(report, { ...baseOptions, fetchImpl, sleep: async () => {}, signal: controller.signal })
+		expect(result.ok).toBe(false)
+		expect(fetchImpl).not.toHaveBeenCalled()
+	})
+
+	it('a fetch that settles in time clears its timer, so nothing is left pending', async () => {
+		vi.useFakeTimers()
+		try {
+			const { fetchImpl, sleep } = setup(201)
+			const result = await sendReport(report, { ...baseOptions, fetchImpl, sleep })
+			expect(result.ok).toBe(true)
+			expect(vi.getTimerCount()).toBe(0)
+		} finally {
+			vi.useRealTimers()
+		}
 	})
 })
