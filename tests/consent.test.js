@@ -392,3 +392,36 @@ describe('ConsentScreen', () => {
 		}
 	})
 })
+
+describe('ConsentScreen send timeout (#45)', () => {
+	it('a send that never settles shows the timeout failure, and × and Keep are enabled again', async () => {
+		// The send hangs until its abort signal fires, as a stalled connection would.
+		fetchMock.mockImplementationOnce((url, init) => new Promise((resolve, reject) => {
+			init.signal?.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')))
+		}))
+		const wrapper = mountButton()
+		await makeReportThrough(wrapper)
+
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+		try {
+			await buttonByText(wrapper, 'Send').trigger('click')
+			await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+			expect(buttonByText(wrapper, 'Keep').element.disabled).toBe(true)
+
+			await vi.advanceTimersByTimeAsync(30_000)
+			await vi.waitFor(() => expect(consentDialog().textContent).toContain('The send timed out. It is kept; try again.'))
+		} finally {
+			vi.useRealTimers()
+		}
+
+		expect(consentStatus()).toBe('Not sent yet')
+		expect(consentDialog().textContent).not.toContain('Sent. Thank you.')
+		expect(buttonByText(wrapper, 'Send').element.disabled).toBe(false)
+		expect(buttonByText(wrapper, 'Keep').element.disabled).toBe(false)
+		expect(consentDialog().querySelector('button[aria-label="Close"]').disabled).toBe(false)
+
+		await buttonByText(wrapper, 'Keep').trigger('click')
+		await flushPromises()
+		expect(consentDialog()).toBeNull()
+	})
+})

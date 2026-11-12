@@ -2,6 +2,7 @@
 
 Newest first. One line per change of stage, release or decision that the next session needs.
 
+- 2026-11-11 Fixed #45: a send with no answer times out after 30 s (per try) and fails like any other send, so the consent screen's × and Keep are enabled again and the user can retry or keep the report.
 - 2026-11-11 Fixed #43: the corner ×, Escape and Keep are blocked while a send is pending, so its result always lands on the open screen and the report reads Sent, never Not sent yet.
 - 2026-11-11 Roadmap map set up: the roadmap now opens with a features block (ten features, three of them wholly After 1.0), and every open issue gets one feature label and a milestone, 1.0 or After 1.0.
 - 2026-11-02 Code map refreshed: committed lockfile, tools/no-drop-secrets.mjs and the CI steps that run it.

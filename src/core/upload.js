@@ -9,13 +9,28 @@ import { fingerprint } from './zip.js'
 const NOT_SET_UP = 'Bug reports are not set up for this app (no drop address).'
 const CHANGED = 'The report changed after you looked at it; make it again.'
 
+// Each try gets this long before it is given up. A stopped send is a failed send, so the consent screen unlocks (#45).
+const SEND_TIMEOUT_MS = 30000
+const STOPPED_MESSAGE = {
+	timeout: 'The send timed out. It is kept; try again.',
+	cancelled: 'The send was cancelled. It is kept; try again.',
+}
+
+/** Thrown by fetchWithTimeout when a try times out or the caller's signal fires; `reason` is a STOPPED_MESSAGE key. */
+class SendStopped extends Error {
+	constructor(reason) {
+		super(reason)
+		this.reason = reason
+	}
+}
+
 /**
  * @param {object} report from buildReport (its fingerprint is checked again)
- * @param {object} options relayUrl, headers (relay mode); or dropBase, dropToken (direct drop, non-browser hosts only); app, fetchImpl, sleep, now, randomHex
+ * @param {object} options relayUrl, headers (relay mode); or dropBase, dropToken (direct drop, non-browser hosts only); app, fetchImpl, sleep, now, randomHex; timeoutMs (default 30 s per try), signal (an AbortSignal that cancels the send)
  * @return {Promise<{ ok: boolean, status?: number, message: string }>}
  */
 export async function sendReport(report, options) {
-	const { relayUrl, headers, dropBase, dropToken, app, fetchImpl = fetch, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), now = new Date(), randomHex = randomHexDefault() } = options
+	const { relayUrl, headers, dropBase, dropToken, app, fetchImpl = fetch, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), now = new Date(), randomHex = randomHexDefault(), timeoutMs = SEND_TIMEOUT_MS, signal } = options
 
 	// Recompute fingerprint and check it matches
 	const computedFingerprint = await fingerprint(report.zip)
@@ -29,7 +44,7 @@ export async function sendReport(report, options) {
 		if (problem) {
 			return { ok: false, message: problem }
 		}
-		return sendViaRelay(report, { relayUrl, headers, app, fetchImpl, sleep, now, randomHex })
+		return sendViaRelay(report, { relayUrl, headers, app, fetchImpl, sleep, now, randomHex, timeoutMs, signal })
 	}
 
 	// Check if required configuration is present
@@ -45,11 +60,11 @@ export async function sendReport(report, options) {
 	// Try up to 3 times with retries
 	for (let i = 0; i < 3; i++) {
 		try {
-			const response = await fetchImpl(url, {
+			const response = await fetchWithTimeout(fetchImpl, url, {
 				method: 'PUT',
 				headers: { 'Content-Type': 'application/zip' },
 				body: report.zip,
-			})
+			}, { timeoutMs, signal })
 
 			lastStatus = response.status
 
@@ -68,7 +83,12 @@ export async function sendReport(report, options) {
 				// Don't retry for other statuses like 403 or 404
 				return { ok: false, status: response.status, message: `The drop refused the report (${response.status}).` }
 			}
-		} catch {
+		} catch (error) {
+			// A timeout or a cancel is final: no retry, so the user gets the screen back at once
+			if (error instanceof SendStopped) {
+				return { ok: false, message: STOPPED_MESSAGE[error.reason] }
+			}
+
 			// Retry on network errors if not the last attempt
 			if (i < 2) {
 				await sleep(1000 * Math.pow(2, i)) // 1s, then 2s
@@ -91,7 +111,7 @@ export async function sendReport(report, options) {
  *
  * @return {Promise<{ ok: boolean, status?: number, message: string }>}
  */
-async function sendViaRelay(report, { relayUrl, headers, app, fetchImpl, sleep, now, randomHex }) {
+async function sendViaRelay(report, { relayUrl, headers, app, fetchImpl, sleep, now, randomHex, timeoutMs, signal }) {
 	const body = new FormData()
 	body.append('report', new Blob([report.zip], { type: 'application/zip' }), dropFileName(app, now, randomHex))
 
@@ -100,15 +120,18 @@ async function sendViaRelay(report, { relayUrl, headers, app, fetchImpl, sleep, 
 	for (let i = 0; i < 3; i++) {
 		let status
 		try {
-			const response = await fetchImpl(relayUrl, {
+			const response = await fetchWithTimeout(fetchImpl, relayUrl, {
 				method: 'POST',
 				headers: { ...headers },
 				body,
 				credentials: 'same-origin',
 				redirect: 'error',
-			})
+			}, { timeoutMs, signal })
 			status = response.status
-		} catch {
+		} catch (error) {
+			if (error instanceof SendStopped) {
+				return { ok: false, message: STOPPED_MESSAGE[error.reason] }
+			}
 			status = undefined
 		}
 		lastStatus = status
@@ -143,6 +166,47 @@ function relayRefusal(status) {
 		return 'Too many reports right now; try again in a few minutes.'
 	}
 	return `The server refused the report (${status}).`
+}
+
+/**
+ * One fetch that is abandoned after timeoutMs, or when the caller's signal aborts. The request is aborted
+ * too. The race means a fetch that ignores its signal still cannot hold the send open. The timer is cleared
+ * as soon as the fetch settles.
+ *
+ * @param {typeof fetch} fetchImpl the fetch to call
+ * @param {string} url where to send the request
+ * @param {object} init the fetch init (its signal is replaced)
+ * @param {{ timeoutMs: number, signal?: AbortSignal }} limits timeoutMs (per try), signal (the caller's AbortSignal, optional)
+ * @return {Promise<Response>} rejects with SendStopped when the try is stopped, or with the fetch's own error
+ */
+async function fetchWithTimeout(fetchImpl, url, init, { timeoutMs, signal }) {
+	if (signal?.aborted) {
+		throw new SendStopped('cancelled')
+	}
+
+	const controller = new AbortController()
+	let timer
+	let onCallerAbort
+	const stopped = new Promise((_, reject) => {
+		timer = setTimeout(() => {
+			reject(new SendStopped('timeout'))
+			controller.abort()
+		}, timeoutMs)
+		if (signal) {
+			onCallerAbort = () => {
+				reject(new SendStopped('cancelled'))
+				controller.abort()
+			}
+			signal.addEventListener('abort', onCallerAbort, { once: true })
+		}
+	})
+
+	try {
+		return await Promise.race([fetchImpl(url, { ...init, signal: controller.signal }), stopped])
+	} finally {
+		clearTimeout(timer)
+		signal?.removeEventListener('abort', onCallerAbort)
+	}
 }
 
 function randomHexDefault() {
