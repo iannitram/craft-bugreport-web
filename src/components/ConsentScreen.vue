@@ -20,6 +20,7 @@
 					class="craft-bugreport-close"
 					aria-label="Close"
 					title="Close"
+					:disabled="sending"
 					@click="close">
 					×
 				</button>
@@ -75,7 +76,11 @@
 				</button>
 			</div>
 			<div v-else class="craft-bugreport-row craft-bugreport-actions">
-				<button type="button" class="craft-bugreport-button" @click="keep">
+				<button
+					type="button"
+					class="craft-bugreport-button"
+					:disabled="sending"
+					@click="keep">
 					Keep
 				</button>
 				<button
@@ -238,12 +243,20 @@ export default {
 		},
 
 		keep() {
+			// A pending send's result lands on this screen, so it cannot close until that result is in (#43).
+			if (this.sending) {
+				return
+			}
 			this.closePreview()
 			this.$emit('keep')
 		},
 
 		// The corner ×, Escape, and Close after Sent: an unsent report is kept, a sent one is done with.
+		// While a send is pending nothing closes, so the result is recorded on the kept report (#43).
 		close() {
+			if (this.sending) {
+				return
+			}
 			clearTimeout(this.autoCloseTimer)
 			if (!this.sent) {
 				this.keep()
@@ -360,6 +373,11 @@ export default {
 
 .craft-bugreport-close:hover {
 	background: var(--color-background-hover, #f2f2f2);
+}
+
+.craft-bugreport-close:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
 }
 
 .craft-bugreport-files {

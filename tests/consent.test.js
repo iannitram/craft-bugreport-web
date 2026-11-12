@@ -279,6 +279,80 @@ describe('ConsentScreen', () => {
 		expect(document.activeElement).toBe(wrapper.find('button').element)
 	})
 
+	// Closing during a pending send (#43): the close controls do nothing until the send's result is in.
+	describe('closing while a send is pending (#43)', () => {
+		// The next fetch stays pending until the test resolves it with a response.
+		function holdNextSend() {
+			let release
+			fetchMock.mockImplementationOnce(() => new Promise((resolve) => {
+				release = resolve
+			}))
+			return (response) => release(response)
+		}
+
+		// Starts a send and waits until its PUT is in flight.
+		async function startPendingSend(wrapper) {
+			await makeReportThrough(wrapper)
+			await buttonByText(wrapper, 'Send').trigger('click')
+			await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+		}
+
+		// The result landed on the open screen: it says Sent, offers no Send, and Close is the only action.
+		// Closing a sent report is done with it, so nothing reopens and no second fetch can happen.
+		async function expectSentWithNoSecondFetch(wrapper) {
+			expect(consentStatus()).toBe('Sent')
+			expect(buttonByText(wrapper, 'Send')).toBeUndefined()
+			await buttonByText(wrapper, 'Close').trigger('click')
+			await flushPromises()
+			expect(consentDialog()).toBeNull()
+			expect(buttonByText(wrapper, 'Review the kept report')).toBeUndefined()
+			expect(fetchMock).toHaveBeenCalledTimes(1)
+		}
+
+		it('the corner × is ignored during a pending send, and a 201 still marks the report Sent', async () => {
+			const wrapper = mountButton()
+			const resolveSend = holdNextSend()
+			await startPendingSend(wrapper)
+
+			consentDialog().querySelector('button[aria-label="Close"]').click()
+			await flushPromises()
+			expect(consentDialog()).not.toBeNull()
+
+			resolveSend({ status: 201 })
+			await vi.waitFor(() => expect(consentStatus()).toBe('Sent'))
+			await expectSentWithNoSecondFetch(wrapper)
+		})
+
+		it('Escape is ignored during a pending send, and a 201 still marks the report Sent', async () => {
+			const wrapper = mountButton()
+			const resolveSend = holdNextSend()
+			await startPendingSend(wrapper)
+
+			consentDialog().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+			await flushPromises()
+			expect(consentDialog()).not.toBeNull()
+
+			resolveSend({ status: 201 })
+			await vi.waitFor(() => expect(consentStatus()).toBe('Sent'))
+			await expectSentWithNoSecondFetch(wrapper)
+		})
+
+		it('Keep is disabled during a pending send, and a 201 still marks the report Sent', async () => {
+			const wrapper = mountButton()
+			const resolveSend = holdNextSend()
+			await startPendingSend(wrapper)
+
+			expect(buttonByText(wrapper, 'Keep').element.disabled).toBe(true)
+			await buttonByText(wrapper, 'Keep').trigger('click')
+			await flushPromises()
+			expect(consentDialog()).not.toBeNull()
+
+			resolveSend({ status: 201 })
+			await vi.waitFor(() => expect(consentStatus()).toBe('Sent'))
+			await expectSentWithNoSecondFetch(wrapper)
+		})
+	})
+
 	it('a shown image comes from an object URL that is revoked on Keep', async () => {
 		URL.createObjectURL = vi.fn(() => 'blob:consent-test')
 		URL.revokeObjectURL = vi.fn()
