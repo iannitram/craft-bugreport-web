@@ -32,6 +32,7 @@ const KEYS = [
 	'sent_as_is',
 	'nextcloud',
 	'browser',
+	'timeline_included',
 ]
 
 function input(userAgent, files = FILES) {
@@ -85,7 +86,7 @@ describe('buildManifest', () => {
 		expect(result.browser).toBe('Safari 18')
 	})
 
-	it('has exactly the 16 keys in order and copies the files array', () => {
+	it('has exactly the 17 keys in order and copies the files array', () => {
 		const ua = 'Mozilla/5.0 (X11; Linux x86_64; rv:139.0) Gecko/20100101 Firefox/139.0'
 		const files = [...FILES]
 		const result = buildManifest({ ...input(ua), config: deepFreeze({ ...CONFIG }), files })

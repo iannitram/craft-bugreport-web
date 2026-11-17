@@ -59,6 +59,49 @@ function appLogText(lines, userName) {
 	return text === '' ? NO_ERRORS_TEXT : text
 }
 
+function maskDiagnosticValue(value, userName) {
+	if (typeof value === 'string') {
+		return maskLogLine(value, userName)
+	}
+	if (Array.isArray(value)) {
+		return value.map((item) => maskDiagnosticValue(item, userName))
+	}
+	if (value && typeof value === 'object') {
+		return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, maskDiagnosticValue(item, userName)]))
+	}
+	return value
+}
+
+async function diagnosticsOf(getDiagnostics, userName) {
+	if (typeof getDiagnostics !== 'function') {
+		return null
+	}
+	try {
+		const diagnostics = await getDiagnostics()
+		if (diagnostics === null || diagnostics === undefined) {
+			return null
+		}
+		if (JSON.stringify(diagnostics).length > 16384) {
+			return { truncated: true }
+		}
+		return maskDiagnosticValue(diagnostics, userName)
+	} catch {
+		return { error: 'getDiagnostics failed' }
+	}
+}
+
+function maskTimelineEvents(events, userName) {
+	return events.map((event) => {
+		const masked = { ...event }
+		for (const key of ['message', 'label', 'name']) {
+			if (typeof masked[key] === 'string') {
+				masked[key] = maskLogLine(masked[key], userName)
+			}
+		}
+		return masked
+	})
+}
+
 /**
  * Turn the accepted data shapes into bytes.
  *
@@ -149,6 +192,8 @@ export async function buildReport(input) {
 		includeWorkingFile,
 		getWorkingFile,
 		errorLines = [],
+		timelineEvents = [],
+		getDiagnostics,
 	} = input
 
 	const now = input.now instanceof Date ? input.now : new Date()
@@ -163,6 +208,13 @@ export async function buildReport(input) {
 	const lines = typeof errorLines === 'function' ? errorLines() : errorLines
 	const appLog = appLogText(Array.isArray(lines) ? lines : [], userName)
 	const appLogData = encoder.encode(appLog)
+	const eventList = typeof timelineEvents === 'function' ? timelineEvents() : timelineEvents
+	const events = maskTimelineEvents(Array.isArray(eventList) ? eventList : [], userName)
+	const host = await diagnosticsOf(getDiagnostics, userName)
+	const timelineIncluded = events.length > 0 || host !== null
+	const timelineEntry = timelineIncluded
+		? { name: 'timeline.json', data: encoder.encode(JSON.stringify({ window_seconds: 60, events, host }, null, 2)) }
+		: null
 
 	let screenshotEntry = null
 	if (screenshot !== null && screenshot !== undefined) {
@@ -195,13 +247,14 @@ export async function buildReport(input) {
 		sentAsIs.push(workingEntry.name)
 	}
 
-	const names = ['what-happened.txt', 'app.log', 'manifest.json', ...sentAsIs]
+	const names = ['what-happened.txt', 'app.log', ...(timelineEntry ? [timelineEntry.name] : []), 'manifest.json', ...sentAsIs]
 
 	const manifest = buildManifest({
 		config,
 		files: names,
 		workingFileIncluded: Boolean(workingEntry),
 		screenshotIncluded: Boolean(screenshotEntry),
+		timelineIncluded,
 		sentAsIs,
 		now,
 		userAgent,
@@ -211,8 +264,11 @@ export async function buildReport(input) {
 	const entries = [
 		{ name: 'what-happened.txt', data: whatHappenedData },
 		{ name: 'app.log', data: appLogData },
-		{ name: 'manifest.json', data: manifestData },
 	]
+	if (timelineEntry) {
+		entries.push(timelineEntry)
+	}
+	entries.push({ name: 'manifest.json', data: manifestData })
 	if (screenshotEntry) {
 		entries.push(screenshotEntry)
 	}

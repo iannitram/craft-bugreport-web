@@ -52,7 +52,7 @@ function getBrowser(userAgent) {
  * @return {object} the manifest object (JSON-serialisable)
  */
 export function buildManifest(input) {
-	const { config, files, workingFileIncluded, screenshotIncluded, sentAsIs = [], now, userAgent } = input
+	const { config, files, workingFileIncluded, screenshotIncluded, timelineIncluded, sentAsIs = [], now, userAgent } = input
 	const agent = userAgent ?? ''
 
 	return {
@@ -72,5 +72,6 @@ export function buildManifest(input) {
 		sent_as_is: [...sentAsIs],
 		nextcloud: config.ncVersion ?? '',
 		browser: getBrowser(agent),
+		timeline_included: !!timelineIncluded,
 	}
 }
