@@ -35,7 +35,7 @@ describe('maskPath', () => {
 	})
 
 	it('decodes each part before matching, and keeps the raw part when decoding fails', () => {
-		expect(maskPath('/a/%69an/b', 'sam')).toBe('/a/<user>/b')
+		expect(maskPath('/a/%73am/b', 'sam')).toBe('/a/<user>/b')
 		expect(maskPath('/a/%E0%A4%A', '')).toBe('/a/%E0%A4%A')
 	})
 
