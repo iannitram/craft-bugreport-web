@@ -1,5 +1,7 @@
 // Error buffer (M2): the last N console errors/warnings, window errors and unhandled rejections. See docs/code-map.md.
 
+import { createTimeline, installRecorder } from './recorder.js'
+
 let installed = null
 
 /**
@@ -31,7 +33,7 @@ function formatArg(value) {
  * @param {{ size?: number }} [options] how many lines to keep (default 200)
  * @return {{ lines: () => string[], uninstall: () => void }}
  */
-export function installErrorBuffer({ size = 200 } = {}) {
+export function installErrorBuffer({ size = 200, timeline: enableTimeline = true, userName } = {}) {
 	if (installed) {
 		return installed
 	}
@@ -41,6 +43,8 @@ export function installErrorBuffer({ size = 200 } = {}) {
 	const originalWarn = target.warn
 	const buffer = []
 	let active = true
+	const eventTimeline = enableTimeline ? createTimeline() : null
+	const recorder = eventTimeline ? installRecorder({ timeline: eventTimeline, userName }) : null
 
 	const add = (line) => {
 		buffer.push(line)
@@ -71,6 +75,7 @@ export function installErrorBuffer({ size = 200 } = {}) {
 
 	const handle = {
 		lines: () => buffer.slice(),
+		timelineEvents: () => eventTimeline ? eventTimeline.events(new Date()) : [],
 		uninstall: () => {
 			if (!active) {
 				return
@@ -78,6 +83,7 @@ export function installErrorBuffer({ size = 200 } = {}) {
 			active = false
 			target.error = originalError
 			target.warn = originalWarn
+			recorder?.uninstall()
 			window.removeEventListener('error', onError)
 			window.removeEventListener('unhandledrejection', onUnhandled)
 			if (installed === handle) {
@@ -97,6 +103,14 @@ export function installErrorBuffer({ size = 200 } = {}) {
  */
 export function currentErrorLines() {
 	return installed ? installed.lines() : []
+}
+
+/**
+ * A copy of the current flight recorder events; [] when it is disabled or not installed.
+ * @return {object[]}
+ */
+export function timelineEvents() {
+	return installed ? installed.timelineEvents() : []
 }
 
 /**
