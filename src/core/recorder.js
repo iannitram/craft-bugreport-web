@@ -54,6 +54,9 @@ export function maskPath(url, userName) {
 			if (userName && decoded === userName) {
 				return '<user>'
 			}
+			if (/[?#&=]/.test(decoded)) {
+				return '<id>'
+			}
 			if (decoded.includes('.')) {
 				return '<file>'
 			}
