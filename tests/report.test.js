@@ -118,10 +118,11 @@ describe('buildReport', () => {
 			sent_as_is: ['screenshot.png', 'working-file.opml'],
 			nextcloud: '33.0.10',
 			browser: 'Firefox 139',
+			timeline_included: false,
 		})
 
 		expect(report.fingerprint)
-			.toBe('4363b5308e0eb32ab483ca3e8d3a0cc61cb27d8c60de97536487e3f90c75797e')
+			.toBe('f9024e2e54ef038f1af88c547f2fb0dd8762f3f312163468cf0637df39affa42')
 		expect(await fingerprint(report.zip)).toBe(report.fingerprint)
 	})
 
