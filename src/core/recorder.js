@@ -1,6 +1,6 @@
 // Flight recorder (1.1, M12-M13): the last 60 seconds of what the user did. See docs/code-map.md.
-import { NotBuilt } from './notBuilt.js'
 import { maskText } from './mask.js'
+import { NotBuilt } from './notBuilt.js'
 import { maskLogLine } from './report.js'
 
 export function createTimeline({ windowMs = 60000, max = 100 } = {}) {
