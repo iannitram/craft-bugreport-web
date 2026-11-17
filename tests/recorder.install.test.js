@@ -96,10 +96,10 @@ describe('page recorder hooks', () => {
 		const proto = XMLHttpRequest.prototype
 		const open = proto.open
 		const send = proto.send
-		const openSpy = vi.spyOn(proto, 'open').mockImplementation(function (method, url) {
+		const openSpy = vi.spyOn(proto, 'open').mockImplementation(function(method, url) {
 			this.testRequest = { method, url }
 		})
-		const sendSpy = vi.spyOn(proto, 'send').mockImplementation(function () {
+		const sendSpy = vi.spyOn(proto, 'send').mockImplementation(function() {
 			if (this.testRequest.url === '/xhr/pending') {
 				Object.defineProperty(this, 'status', { configurable: true, value: 404 })
 				return

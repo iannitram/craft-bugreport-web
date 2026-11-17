@@ -184,12 +184,14 @@ export function installRecorder({ timeline, userName } = {}) {
 	for (const method of ['pushState', 'replaceState']) {
 		const descriptor = descriptorFor(history, method)
 		const original = history[method]
-		if (typeof original !== 'function') continue
+		if (typeof original !== 'function') {
+			continue
+		}
 		historyDescriptors.set(method, descriptor)
 		Object.defineProperty(history, method, {
 			configurable: true,
 			writable: true,
-			value: function (...args) {
+			value: function(...args) {
 				const result = Reflect.apply(original, this, args)
 				onRoute()
 				return result
@@ -204,14 +206,16 @@ export function installRecorder({ timeline, userName } = {}) {
 	page.addEventListener('unhandledrejection', onUnhandled)
 
 	if (originalFetch) {
-		page.fetch = function (...args) {
+		page.fetch = function(...args) {
 			const request = args[0]
 			const init = args[1]
 			const url = typeof request === 'string' ? request : request?.url ?? request?.href
 			const method = init?.method || request?.method || 'GET'
 			const result = Reflect.apply(originalFetch, this, args)
 			return Promise.resolve(result).then((response) => {
-				if (response.status >= 400) add('request', { url, method, status: response.status })
+				if (response.status >= 400) {
+					add('request', { url, method, status: response.status })
+				}
 				return response
 			}, (error) => {
 				add('request', { url, method, status: 0 })
@@ -224,26 +228,29 @@ export function installRecorder({ timeline, userName } = {}) {
 		for (const method of ['open', 'send']) {
 			const descriptor = descriptorFor(xhrPrototype, method)
 			const original = xhrPrototype[method]
-			if (typeof original !== 'function') continue
+			if (typeof original !== 'function') {
+				continue
+			}
 			xhrDescriptors.set(method, descriptor)
 			const value = method === 'open'
-				? function (requestMethod, url, ...args) {
+				? function(requestMethod, url, ...args) {
 					xhrRequests.set(this, { method: requestMethod, url, recorded: false })
 					return Reflect.apply(original, this, [requestMethod, url, ...args])
 				}
-				: function (...args) {
+				: function(...args) {
 					const xhr = this
 					const request = xhrRequests.get(xhr)
-					let cleanup
 					const finish = (status) => {
-						cleanup?.()
-						if (status === null || !request || request.recorded) return
+						cleanup()
+						if (status === null || !request || request.recorded) {
+							return
+						}
 						request.recorded = true
 						add('request', { url: request.url, method: request.method, status })
 					}
 					const onLoadEnd = () => finish(xhr.status >= 400 ? xhr.status : null)
 					const onNetworkError = () => finish(0)
-					cleanup = () => {
+					const cleanup = () => {
 						xhr.removeEventListener('loadend', onLoadEnd)
 						xhr.removeEventListener('error', onNetworkError)
 						pendingXhrListeners.delete(cleanup)
@@ -268,18 +275,30 @@ export function installRecorder({ timeline, userName } = {}) {
 			add('mark', { name })
 		},
 		uninstall() {
-			if (!installed) return
+			if (!installed) {
+				return
+			}
 			installed = false
-			for (const [method, descriptor] of historyDescriptors) restoreProperty(history, method, descriptor)
-			for (const [method, descriptor] of xhrDescriptors) restoreProperty(xhrPrototype, method, descriptor)
-			for (const cleanup of pendingXhrListeners) cleanup()
-			if (originalFetch && page.fetch !== originalFetch) page.fetch = originalFetch
+			for (const [method, descriptor] of historyDescriptors) {
+				restoreProperty(history, method, descriptor)
+			}
+			for (const [method, descriptor] of xhrDescriptors) {
+				restoreProperty(xhrPrototype, method, descriptor)
+			}
+			for (const cleanup of pendingXhrListeners) {
+				cleanup()
+			}
+			if (originalFetch && page.fetch !== originalFetch) {
+				page.fetch = originalFetch
+			}
 			page.removeEventListener('popstate', onRoute)
 			page.removeEventListener('hashchange', onRoute)
 			page.removeEventListener('click', onClick, true)
 			page.removeEventListener('error', onError)
 			page.removeEventListener('unhandledrejection', onUnhandled)
-			if (activeRecorder === handle) activeRecorder = null
+			if (activeRecorder === handle) {
+				activeRecorder = null
+			}
 		},
 	}
 	activeRecorder = handle
@@ -288,7 +307,9 @@ export function installRecorder({ timeline, userName } = {}) {
 
 /** Add a host-provided event to the currently installed timeline. */
 export function markEvent(name) {
-	if (!activeRecorder) return
+	if (!activeRecorder) {
+		return
+	}
 	activeRecorder.addMark(name)
 }
 
