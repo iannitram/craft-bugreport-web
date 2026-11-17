@@ -250,7 +250,7 @@ export function installRecorder({ timeline, userName } = {}) {
 					}
 					const onLoadEnd = () => finish(xhr.status >= 400 ? xhr.status : null)
 					const onNetworkError = () => finish(0)
-					const cleanup = () => {
+					function cleanup() {
 						xhr.removeEventListener('loadend', onLoadEnd)
 						xhr.removeEventListener('error', onNetworkError)
 						pendingXhrListeners.delete(cleanup)
