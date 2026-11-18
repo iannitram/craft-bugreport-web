@@ -1,6 +1,6 @@
 # Code map
 
-Describes commit: f731efd (2026-11-01)
+Describes commit: 9c0216a (2026-11-18)
 
 Status: every 1.0 module is **present** (built and merged 2026-10-28). The M12-M13 flight recorder is **present**; remaining 1.1 modules are planned.
 

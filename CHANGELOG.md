@@ -2,6 +2,7 @@
 
 Newest first. One line per change of stage, release or decision that the next session needs.
 
+- 2026-11-18 PM audit: PIPELINE.md Notes no longer say skeleton stubs (v1.0.0 is released), Peers reviewed line added, code map re-dated to 9c0216a; one from-peer issue filed (formatArg must not throw on a null-prototype circular object) and a Sentry empty-URL XHR note added to #47.
 - 2026-11-16 Released v1.0.0 (#12): one real report from a desktop browser on Linux (2026-10-28), Windows and macOS (2026-11-16) went through each host app, nc-outliner and nc-projects, into the File Drop, and each zip opened unchanged. Host apps pin `github:iannitram/craft-bugreport-web#v1.0.0`.
 - 2026-11-11 Fixed #45: a send with no answer times out after 30 s (per try) and fails like any other send, so the consent screen's × and Keep are enabled again and the user can retry or keep the report.
 - 2026-11-11 Fixed #43: the corner ×, Escape and Keep are blocked while a send is pending, so its result always lands on the open screen and the report reads Sent, never Not sent yet.
